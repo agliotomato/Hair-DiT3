@@ -72,7 +72,7 @@ class StrokeColorSampler:
             # Matte check: target is usually 0 (or -1 in [-1,1] range) in non-hair areas.
             # However, `target` passed from dataset should already be target * matte.
             # If target is [-1, 1], non-hair area is -1.0.
-            valid = (hair_pixels.sum(dim=0) > -2.9)  # (N,)  Sum of -1, -1, -1 is -3.0
+            valid = (hair_pixels.sum(dim=0) > -2.85)  # (N,) 비헤어=(-1,-1,-1)→sum=-3, hair-dit [0,1]>0.05 동치
             
             if valid.sum() < self.min_pixels:
                 continue

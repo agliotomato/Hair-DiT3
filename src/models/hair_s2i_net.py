@@ -119,6 +119,8 @@ class HairS2INet(nn.Module):
             pretrained_model_name_or_path,
             subfolder="transformer",
             extra_conditioning_channels=1,
+            ignore_mismatched_sizes=True,
+            low_cpu_mem_usage=False,
         )
 
         # No-parameter modules
