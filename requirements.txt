@@ -1,0 +1,34 @@
+# Core
+torch>=2.1.0
+torchvision>=0.16.0
+
+# Diffusers / HuggingFace
+diffusers>=0.30.0
+transformers>=4.40.0
+accelerate>=0.30.0
+
+# Optional: EMA
+torch_ema>=0.3
+
+# Image processing
+Pillow>=10.0.0
+numpy>=1.24.0
+opencv-python>=4.8.0
+
+# Losses
+kornia>=0.7.0
+lpips>=0.1.4
+
+# Evaluation
+scikit-image>=0.21.0
+
+# Logging
+tensorboard>=2.14.0
+# wandb>=0.16.0  # 선택: WandB 사용 시 주석 해제
+
+# Testing
+pytest>=7.4.0
+
+# Utilities
+tqdm>=4.66.0
+PyYAML>=6.0

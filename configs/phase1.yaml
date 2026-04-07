@@ -1,0 +1,13 @@
+# Phase 1: Unbraid 사전학습
+# matte_cnn + sd3_controlnet, unbraid 재구성 (3000장)
+
+base: configs/base.yaml
+
+training:
+  dataset: unbraid_train
+  epochs: 50
+  learning_rate: 3.0e-4
+  warmup_steps: 500
+
+checkpointing:
+  output_dir: outputs/phase1

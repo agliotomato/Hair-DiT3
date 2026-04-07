@@ -1,0 +1,19 @@
+# Phase 2: Braid 파인튜닝
+# Phase 1 체크포인트 로드 후 braid 도메인 적응 (1000장)
+
+base: configs/base.yaml
+
+training:
+  dataset: braid_train
+  resume_from: outputs/phase1/final/hair_s2i_modules.pt
+  epochs: 50
+  learning_rate: 5.0e-5
+  warmup_steps: 100
+  loss_weights:
+    flow: 1.0
+    bg: 3.0
+    struct: 0.7
+    lpips: 0.2
+
+checkpointing:
+  output_dir: outputs/phase2

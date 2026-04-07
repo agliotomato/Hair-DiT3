@@ -1,0 +1,31 @@
+# EHC v2 공통 설정
+# transformer 동결, matte_cnn + sd3_controlnet만 학습 (LoRA 없음)
+
+model:
+  model_id: stabilityai/stable-diffusion-3.5-medium
+  blend_start_ratio: 0.5   # 앞 50% full residual, 뒤 50% matte gate
+
+data:
+  root: dataset
+  image_size: 512
+
+training:
+  batch_size: 2
+  gradient_accumulation_steps: 4   # effective batch = 8
+  mixed_precision: bf16
+  gradient_checkpointing: true
+  gradient_clip: 1.0
+  ema_decay: 0.9999
+  logit_mean: 0.0   # Logit-Normal sigma 샘플링 (중간 노이즈 집중)
+  logit_std: 1.0
+  warmup_steps: 500
+  loss_weights:
+    flow: 1.0
+    bg: 3.0
+    struct: 0.7
+    lpips: 0.2
+
+checkpointing:
+  output_dir: outputs/hair_s2i
+  log_every: 50
+  save_every: 1000
