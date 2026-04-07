@@ -73,9 +73,10 @@ class HairS2INet(nn.Module):
 
         self.blend_start_ratio = blend_start_ratio
 
-        # SD3.5 components
+        # SD3.5 components (bf16으로 로드 → VRAM 절반)
         self.vae = AutoencoderKL.from_pretrained(
-            pretrained_model_name_or_path, subfolder="vae"
+            pretrained_model_name_or_path, subfolder="vae",
+            torch_dtype=torch.bfloat16,
         )
         self.tokenizer = CLIPTokenizer.from_pretrained(
             pretrained_model_name_or_path, subfolder="tokenizer"
@@ -87,16 +88,20 @@ class HairS2INet(nn.Module):
             pretrained_model_name_or_path, subfolder="tokenizer_3"
         )
         self.text_encoder = CLIPTextModelWithProjection.from_pretrained(
-            pretrained_model_name_or_path, subfolder="text_encoder"
+            pretrained_model_name_or_path, subfolder="text_encoder",
+            torch_dtype=torch.bfloat16,
         )
         self.text_encoder_2 = CLIPTextModelWithProjection.from_pretrained(
-            pretrained_model_name_or_path, subfolder="text_encoder_2"
+            pretrained_model_name_or_path, subfolder="text_encoder_2",
+            torch_dtype=torch.bfloat16,
         )
         self.text_encoder_3 = T5EncoderModel.from_pretrained(
-            pretrained_model_name_or_path, subfolder="text_encoder_3"
+            pretrained_model_name_or_path, subfolder="text_encoder_3",
+            torch_dtype=torch.bfloat16,
         )
         self.transformer = SD3Transformer2DModel.from_pretrained(
-            pretrained_model_name_or_path, subfolder="transformer"
+            pretrained_model_name_or_path, subfolder="transformer",
+            torch_dtype=torch.bfloat16,
         )
         self.scheduler = FlowMatchEulerDiscreteScheduler.from_pretrained(
             pretrained_model_name_or_path, subfolder="scheduler"
@@ -121,6 +126,7 @@ class HairS2INet(nn.Module):
             extra_conditioning_channels=1,
             ignore_mismatched_sizes=True,
             low_cpu_mem_usage=False,
+            torch_dtype=torch.bfloat16,
         )
 
         # No-parameter modules
