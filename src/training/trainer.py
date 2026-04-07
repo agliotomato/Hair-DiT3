@@ -187,8 +187,9 @@ class Trainer:
                     prompt_embeds = torch.cat(prompt_embeds_list, dim=0)
                     pooled_embeds = torch.cat(pooled_embeds_list, dim=0)
 
-                    z_target = model.vae.encode(target_img).latent_dist.sample()
-                    z_target = z_target * model.vae_scale_factor
+                    vae_dtype = next(model.vae.parameters()).dtype
+                    z_target = model.vae.encode(target_img.to(vae_dtype)).latent_dist.sample()
+                    z_target = z_target.float() * model.vae_scale_factor
 
                 noise = torch.randn_like(z_target)
 
@@ -207,8 +208,8 @@ class Trainer:
                     flow_target = noise - z_target
 
                     with torch.no_grad():
-                        z_bg = model.vae.encode(background).latent_dist.sample()
-                        z_bg = z_bg * model.vae_scale_factor
+                        z_bg = model.vae.encode(background.to(vae_dtype)).latent_dist.sample()
+                        z_bg = z_bg.float() * model.vae_scale_factor
 
                     from ..utils.preprocess import matte_to_latent
                     matte_latent = matte_to_latent(matte, z_bg.shape[-2:])
@@ -216,8 +217,10 @@ class Trainer:
                     pred_z0 = noise - noise_pred
 
                     pred_image = None
-                    if lw.get("lpips", 0) > 0 or lw.get("struct", 0) > 0:
-                        pred_image = model.vae.decode(pred_z0 / model.vae_scale_factor).sample
+                    if lw.get("lpips", 0) > 0 or lw.get("edge", 0) > 0:
+                        pred_image = model.vae.decode(
+                            (pred_z0 / model.vae_scale_factor).to(vae_dtype)
+                        ).sample.float()
 
                     total_loss, loss_dict = criterion(
                         noise_pred=noise_pred,
