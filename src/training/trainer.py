@@ -111,11 +111,10 @@ class Trainer:
 
         # ── 손실 함수 ──
         criterion = HairS2ILoss(
-            lambda_bg=lw["bg"],
-            lambda_struct=lw["struct"],
-            lambda_percep=lw["lpips"],
-            use_perceptual=lw.get("lpips", 0) > 0,
-            use_structure=lw.get("struct", 0) > 0,
+            phase=t.get("phase", 1),
+            lambda_bg=lw.get("bg", 3.0),
+            lambda_lpips=lw.get("lpips", 0.1),
+            lambda_edge=lw.get("edge", 0.05),
         ).to(self.device)
 
         # ── Optimizer & LR Scheduler ──
@@ -230,6 +229,8 @@ class Trainer:
                         target_image=target_img,
                         sketch=sketch,
                         matte_image=matte,
+                        global_step=global_step,
+                        total_steps=total_steps,
                     )
                     total_loss = total_loss / grad_accum
 

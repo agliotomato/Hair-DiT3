@@ -22,8 +22,8 @@ training:
   loss_weights:
     flow: 1.0
     bg: 3.0
-    struct: 0.7
-    lpips: 0.2
+    lpips: 0.1
+    edge: 0.05
 
 checkpointing:
   output_dir: outputs/hair_s2i

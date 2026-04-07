@@ -4,6 +4,7 @@
 base: configs/base.yaml
 
 training:
+  phase: 2
   dataset: braid_train
   resume_from: outputs/phase1/final/hair_s2i_modules.pt
   epochs: 50
@@ -12,8 +13,8 @@ training:
   loss_weights:
     flow: 1.0
     bg: 3.0
-    struct: 0.7
-    lpips: 0.2
+    lpips: 0.1
+    edge: 0.05
 
 checkpointing:
   output_dir: outputs/phase2

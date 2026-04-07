@@ -4,6 +4,7 @@
 base: configs/base.yaml
 
 training:
+  phase: 1
   dataset: unbraid_train
   epochs: 50
   learning_rate: 3.0e-4
