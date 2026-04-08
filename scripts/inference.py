@@ -45,6 +45,7 @@ def main():
         # 신규 모듈 (matte_cnn, sd3_controlnet, null_embeddings) 로드
         if "matte_cnn" in state:
             model.matte_cnn.load_state_dict(state["matte_cnn"])
+            model.matte_cnn.to(torch.bfloat16)
             model.sd3_controlnet.load_state_dict(state["sd3_controlnet"])
             if "null_embeddings" in state:
                 # nn.Parameter 직접 할당 대신 데이터 복사

@@ -94,7 +94,7 @@ class HairS2INet(nn.Module):
 
         # Trainable modules
         # MatteCNN: zero-init -> matte_feat~=0 at init -> sane start
-        self.matte_cnn = MatteCNN(out_channels=16)
+        self.matte_cnn = MatteCNN(out_channels=16).to(torch.bfloat16)
 
         # MM-DiT Base Transformer (Frozen or partially trainable)
         self.transformer = SD3Transformer2DModel.from_pretrained(
