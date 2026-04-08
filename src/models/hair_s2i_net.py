@@ -291,6 +291,9 @@ class HairS2INet(nn.Module):
             noise_pred = noise_pred_uncond + guidance_scale * (
                 noise_pred_cond - noise_pred_uncond
             )
+            # Rescaled CFG: std 재조정으로 고 guidance 발산 방지
+            factor = noise_pred_cond.std() / noise_pred.std().clamp(min=1e-8)
+            noise_pred = 0.7 * (noise_pred * factor) + 0.3 * noise_pred
 
             z = self.scheduler.step(noise_pred, t, z).prev_sample.to(torch.bfloat16)
 
