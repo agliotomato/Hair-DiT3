@@ -142,13 +142,18 @@ class MatteBoundaryPerturbation:
         matte_warped = F.grid_sample(matte.float(), grid_warped, mode="bilinear", align_corners=True)
         matte_warped = matte_warped.squeeze(0).clamp(0, 1)
 
-        # Re-composite target image with warped matte
-        # In training, 'target' is background + hair. 
-        # But for 'L_flow' we care about the hair area.
-        # Actually, warping the matte and re-compositing target ensures the boundary loss is consistent.
-        # However, hair-dit3 usually has full 'target'. 
-        # Let's just update the matte.
+        # Warp target and background with the same grid to maintain spatial alignment
+        target_warped = F.grid_sample(
+            sample["target"].unsqueeze(0).float(), grid_warped, mode="bilinear", align_corners=True
+        ).squeeze(0).clamp(-1, 1)
+
+        background_warped = F.grid_sample(
+            sample["background"].unsqueeze(0).float(), grid_warped, mode="bilinear", align_corners=True
+        ).squeeze(0).clamp(-1, 1)
+
         sample["matte"] = matte_warped
+        sample["target"] = target_warped
+        sample["background"] = background_warped
         return sample
 
 class ComposeAug:

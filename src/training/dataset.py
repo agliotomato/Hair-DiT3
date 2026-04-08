@@ -41,7 +41,6 @@ class HairS2IDataset(Dataset):
         sketch:     [3, H, W] float32 in [-1, 1] (컬러 스케치)
         matte:      [1, H, W] float32 in [0, 1]
         target:     [3, H, W] float32 in [-1, 1]
-        prompt:     str (비어있으면 "")
     """
 
     VALID_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -51,12 +50,10 @@ class HairS2IDataset(Dataset):
         data_dir: str,
         image_size: int = 512,
         augment: bool = True,
-        prompt_dir: Optional[str] = None,   # 텍스트 프롬프트 .txt 파일 디렉토리
     ):
         self.data_dir   = Path(data_dir)
         self.image_size = image_size
         self.augment    = augment
-        self.prompt_dir = Path(prompt_dir) if prompt_dir else None
 
         # 파일 목록 수집 (background 기준)
         bg_dir = self.data_dir / "background"
@@ -119,19 +116,11 @@ class HairS2IDataset(Dataset):
             mt_tensor  = sample["matte"]
             tgt_tensor = sample["target"]
 
-        # 텍스트 프롬프트 (있으면 로드)
-        prompt = ""
-        if self.prompt_dir is not None:
-            txt_path = self.prompt_dir / f"{stem}.txt"
-            if txt_path.exists():
-                prompt = txt_path.read_text(encoding="utf-8").strip()
-
         return {
             "background": bg_tensor,
             "sketch":     sk_tensor,
             "matte":      mt_tensor,
             "target":     tgt_tensor,
-            "prompt":     prompt,
         }
 
     def _load_image(self, directory: Path, stem: str, mode: str) -> Image.Image:
@@ -254,11 +243,13 @@ class HairRegionDataset(Dataset):
             "sketch":     sketch_t,
             "matte":      matte_t,
             "target":     target_t,
-            "prompt":     "",
         }
 
         if self.aug_pipeline is not None:
             sample = self.aug_pipeline(sample)
+
+        # Remove internal prompt key if exists
+        sample.pop("prompt", None)
 
         return sample
 
