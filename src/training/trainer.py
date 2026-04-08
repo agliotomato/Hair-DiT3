@@ -113,9 +113,20 @@ class Trainer:
             if checkpoint_path.exists():
                 logger.info(f"📦 체크포인트 불러오기 시도: {checkpoint_path}")
                 state = torch.load(checkpoint_path, map_location=self.device)
-                model.load_state_dict(state, strict=False)
+                
+                # 핵심 알맹이 직접 주입 (이름 불일치 해결)
+                if "matte_cnn" in state:
+                    model.matte_cnn.load_state_dict(state["matte_cnn"])
+                if "sd3_controlnet" in state:
+                    model.sd3_controlnet.load_state_dict(state["sd3_controlnet"])
+                
+                # Null Embeddings 복구
+                if "null_embeddings" in state:
+                    model.null_encoder_hidden_states = state["null_embeddings"]["hidden_states"]
+                    model.null_pooled_projections = state["null_embeddings"]["pooled_projections"]
+
                 global_step = state.get("step", 0)
-                logger.info(f"🚀 성공: Step {global_step}부터 학습을 재개합니다.")
+                logger.info(f"🚀 성공: Step {global_step}부터 학습을 진짜로 재개합니다!")
             else:
                 logger.error(f"🚫 체크포인트 파일이 존재하지 않습니다: {checkpoint_path}")
                 logger.info("파일을 찾지 못해 Step 0부터 학습을 시작합니다.")
