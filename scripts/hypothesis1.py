@@ -15,10 +15,31 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np
 import torch
-from PIL import Image
+from PIL import Image, ImageFilter
 from pathlib import Path
 
 from src.models.hair_s2i_net import HairS2INet
+
+
+def remove_hair_region(bg_pil: Image.Image, matte_pil: Image.Image,
+                       blur_radius: int = 20) -> Image.Image:
+    """
+    matte 영역(hair)을 주변 색상의 heavily blurred 값으로 채워 반환.
+    기존 머리 context를 제거하고 sketch만으로 생성하기 위함.
+    """
+    bg  = bg_pil.convert("RGB").resize((512, 512))
+    mt  = matte_pil.convert("L").resize((512, 512))
+
+    bg_arr = np.array(bg, dtype=np.float32)
+    mt_arr = np.array(mt, dtype=np.float32) / 255.0  # [0,1]
+
+    # 강한 blur로 주변 색상 추정
+    blurred = np.array(bg.filter(ImageFilter.GaussianBlur(radius=blur_radius)),
+                       dtype=np.float32)
+
+    # hair 영역 = blurred 값, 나머지 = 원본
+    result = bg_arr * (1.0 - mt_arr[..., None]) + blurred * mt_arr[..., None]
+    return Image.fromarray(result.clip(0, 255).astype(np.uint8))
 
 
 GROUPS = {
@@ -150,6 +171,9 @@ def main():
 
             tgt_bg    = Image.open(data_root / "img"    / "test" / f"{tgt_id}.png").convert("RGB")
             tgt_matte = Image.open(data_root / "matte"  / "test" / f"{tgt_id}.png").convert("L")
+
+            # 기존 머리 제거 → sketch만으로 생성되도록
+            tgt_bg = remove_hair_region(tgt_bg, tgt_matte)
 
             warped_sketch = warp_sketch_to_matte(ref_sketch, ref_matte, tgt_matte)
 
