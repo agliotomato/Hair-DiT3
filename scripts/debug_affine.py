@@ -13,7 +13,7 @@ OUT  = Path("results/debug_affine")
 OUT.mkdir(parents=True, exist_ok=True)
 
 REF_ID = "braid_2534"
-TARGETS = ["braid_2572", "braid_2537", "braid_2539"]  # back 1개 + side 2개
+TARGETS = ["braid_2574", "braid_2576", "braid_2592", "braid_2617"]
 
 ref_sketch = Image.open(DATA / "sketch" / "test" / f"{REF_ID}.png").convert("L")
 ref_matte  = Image.open(DATA / "matte"  / "test" / f"{REF_ID}.png").convert("L")
