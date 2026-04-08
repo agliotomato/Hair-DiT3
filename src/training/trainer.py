@@ -199,7 +199,8 @@ class Trainer:
         save_every  = cfg["checkpointing"].get("save_every", 1000)
 
         # ── 학습 루프 ──
-        # (global_step, grad_accum_cnt는 위에서 resume 로직에 의해 설정됨)
+        # (global_step은 위에서 resume 로직에 의해 설정됨)
+        grad_accum_cnt = 0
         running_loss: Dict[str, float] = {}
 
         model.train()
