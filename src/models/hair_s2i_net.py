@@ -108,8 +108,9 @@ class HairS2INet(nn.Module):
         self.sd3_controlnet = SD3ControlNetModel.from_transformer(
             self.transformer,
             num_layers=12,
-            torch_dtype=torch.bfloat16,
         )
+        # Ensure correct bfloat16 dtype
+        self.sd3_controlnet.to(torch.bfloat16)
         # Manually patching conditioning channels if not set (legacy/version compatibility)
         if self.sd3_controlnet.config.extra_conditioning_channels != 1:
             self.sd3_controlnet.config.extra_conditioning_channels = 1
