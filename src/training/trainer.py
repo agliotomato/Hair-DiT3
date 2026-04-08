@@ -94,26 +94,31 @@ class Trainer:
 
         # 체크포인트 로드
         resume_from = t.get("resume_from")
+        output_dir = cfg["checkpointing"]["output_dir"]
         
         # ── 자동 Resume 기능 (latest) ──
         if resume_from == "latest":
+            logger.info(f"'{output_dir}' 폴더에서 최신 체크포인트를 탐색합니다...")
             resume_from = self._find_latest_checkpoint(output_dir)
             if resume_from:
-                logger.info(f"자동 Resume 활성화: {resume_from}")
+                logger.info(f"✅ 최신 체크포인트 발견: {resume_from}")
             else:
-                logger.info("최근 체크포인트를 찾을 수 없습니다. 처음부터 학습을 시작합니다.")
+                logger.warning(f"❌ '{output_dir}'에서 체크포인트를 찾지 못했습니다. 처음부터 시작합니다.")
 
         global_step = 0
         if resume_from:
-            checkpoint_path = Path(resume_from) / "hair_s2i_modules.pt"
+            checkpoint_dir = Path(resume_from).resolve()
+            checkpoint_path = checkpoint_dir / "hair_s2i_modules.pt"
+            
             if checkpoint_path.exists():
-                logger.info(f"체크포인트 로딩: {checkpoint_path}")
+                logger.info(f"📦 체크포인트 불러오기 시도: {checkpoint_path}")
                 state = torch.load(checkpoint_path, map_location=self.device)
                 model.load_state_dict(state, strict=False)
                 global_step = state.get("step", 0)
-                logger.info(f"Step {global_step}부터 재개합니다.")
+                logger.info(f"🚀 성공: Step {global_step}부터 학습을 재개합니다.")
             else:
-                logger.warning(f"체크포인트를 찾지 못했습니다: {checkpoint_path}")
+                logger.error(f"🚫 체크포인트 파일이 존재하지 않습니다: {checkpoint_path}")
+                logger.info("파일을 찾지 못해 Step 0부터 학습을 시작합니다.")
 
         # ── 데이터셋 ──
         dataset_split = t["dataset"]
