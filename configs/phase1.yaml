@@ -7,8 +7,10 @@ training:
   phase: 1
   dataset: unbraid_train
   epochs: 50
-  learning_rate: 3.0e-4
+  learning_rate: 1.0e-4
   warmup_steps: 500
+  loss_weights:
+    edge: 0.0   # Phase 1에서는 엣지 손실 제외 (철학 반영)
 
 checkpointing:
   output_dir: outputs/phase1

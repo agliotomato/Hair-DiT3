@@ -22,6 +22,12 @@ from .dataset import HairRegionDataset, HairS2IDataset
 from ..models.hair_s2i_net import HairS2INet
 from ..losses.hair_s2i_loss import HairS2ILoss
 
+try:
+    import wandb
+    HAS_WANDB = True
+except ImportError:
+    HAS_WANDB = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -63,6 +69,16 @@ class Trainer:
             model_c["model_id"],
             blend_start_ratio=model_c["blend_start_ratio"],
         ).to(self.device)
+
+        # ── WandB 초기화 ──
+        use_wandb = t.get("use_wandb", False) and HAS_WANDB
+        if use_wandb:
+            wandb.init(
+                project=t.get("wandb_project", "hair-dit3"),
+                config=cfg,
+                name=t.get("wandb_run_name"),
+            )
+            logger.info("WandB 활성화됨.")
 
         model.freeze_transformer()
 
@@ -115,6 +131,7 @@ class Trainer:
             lambda_bg=lw.get("bg", 3.0),
             lambda_lpips=lw.get("lpips", 0.1),
             lambda_edge=lw.get("edge", 0.05),
+            lpips_warmup_ratio=t.get("lpips_warmup_ratio", 0.3),
         ).to(self.device)
 
         # ── Optimizer & LR Scheduler ──
@@ -272,6 +289,8 @@ class Trainer:
                             f"epoch={epoch+1} step={global_step} "
                             + " ".join(f"{k}={v:.4f}" for k, v in avg.items())
                         )
+                        if use_wandb:
+                            wandb.log({**avg, "epoch": epoch + 1, "lr": optimizer.param_groups[0]["lr"]}, step=global_step)
                         running_loss = {}
 
                     if global_step % save_every == 0:

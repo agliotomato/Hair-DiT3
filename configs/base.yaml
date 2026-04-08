@@ -10,8 +10,8 @@ data:
   image_size: 512
 
 training:
-  batch_size: 2
-  gradient_accumulation_steps: 4   # effective batch = 8
+  batch_size: 8
+  gradient_accumulation_steps: 1   # Effective batch = 8 (GH200 optimized)
   mixed_precision: bf16
   gradient_checkpointing: true
   gradient_clip: 1.0
@@ -19,6 +19,8 @@ training:
   logit_mean: 0.0   # Logit-Normal sigma 샘플링 (중간 노이즈 집중)
   logit_std: 1.0
   warmup_steps: 500
+  lpips_warmup_ratio: 0.3   # 30% step 이후 LPIPS 활성화 (철학 이식)
+  use_wandb: true
   loss_weights:
     flow: 1.0
     bg: 3.0
