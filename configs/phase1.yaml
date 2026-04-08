@@ -5,6 +5,8 @@ base: configs/base.yaml
 
 training:
   phase: 1
+  dropout: 0.1
+  resume_from: latest  # 자동으로 최신 체크포인트(checkpoint-XXXX)를 찾아 Resume
   dataset: unbraid_train
   epochs: 50
   learning_rate: 1.0e-4

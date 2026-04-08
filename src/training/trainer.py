@@ -11,7 +11,7 @@ HAIR-DIT 이식 기법:
 """
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional, Tuple, List
 
 import torch
 from torch.optim import AdamW
@@ -88,16 +88,26 @@ class Trainer:
 
         # 체크포인트 로드
         resume_from = t.get("resume_from")
-        if resume_from:
-            logger.info(f"체크포인트 로드: {resume_from}")
-            state = torch.load(resume_from, map_location=self.device)
-            if "matte_cnn" in state:
-                model.matte_cnn.load_state_dict(state["matte_cnn"])
-                model.sd3_controlnet.load_state_dict(state["sd3_controlnet"])
-            elif "sketch_encoder" in state:
-                logger.warning("구 체크포인트 형식 (sketch_encoder) — 무시하고 새로 학습합니다.")
+        
+        # ── 자동 Resume 기능 (latest) ──
+        if resume_from == "latest":
+            resume_from = self._find_latest_checkpoint(output_dir)
+            if resume_from:
+                logger.info(f"자동 Resume 활성화: {resume_from}")
             else:
+                logger.info("최근 체크포인트를 찾을 수 없습니다. 처음부터 학습을 시작합니다.")
+
+        global_step = 0
+        if resume_from:
+            checkpoint_path = Path(resume_from) / "hair_s2i_modules.pt"
+            if checkpoint_path.exists():
+                logger.info(f"체크포인트 로딩: {checkpoint_path}")
+                state = torch.load(checkpoint_path, map_location=self.device)
                 model.load_state_dict(state, strict=False)
+                global_step = state.get("step", 0)
+                logger.info(f"Step {global_step}부터 재개합니다.")
+            else:
+                logger.warning(f"체크포인트를 찾지 못했습니다: {checkpoint_path}")
 
         # ── 데이터셋 ──
         dataset_split = t["dataset"]
@@ -291,7 +301,21 @@ class Trainer:
                             + " ".join(f"{k}={v:.4f}" for k, v in avg.items())
                         )
                         if use_wandb:
-                            wandb.log({**avg, "epoch": epoch + 1, "lr": optimizer.param_groups[0]["lr"]}, step=global_step)
+                            # ── 이미지 로깅 추가 ──
+                            # 텐서 [-1, 1] -> [0, 1] 변환 및 (H, W, C) 형식으로 변환하여 업로드
+                            log_dict = {**avg, "epoch": epoch + 1, "lr": optimizer.param_groups[0]["lr"]}
+                            if pred_image is not None:
+                                samples = []
+                                for i in range(min(4, pred_image.shape[0])): # 최대 4장만 로깅
+                                    row = torch.cat([
+                                        (sketch[i] + 1.0) / 2.0,
+                                        (target_img[i] + 1.0) / 2.0,
+                                        (pred_image[i].clamp(-1, 1) + 1.0) / 2.0
+                                    ], dim=2) # 가로로 붙이기
+                                    samples.append(wandb.Image(row.permute(1, 2, 0).cpu().numpy(), caption=f"Step {global_step}"))
+                                log_dict["samples"] = samples
+                            
+                            wandb.log(log_dict, step=global_step)
                         running_loss = {}
 
                     if global_step % save_every == 0:
@@ -299,6 +323,29 @@ class Trainer:
 
         logger.info("학습 완료")
         self._save_checkpoint(model, ema_model, global_step, output_dir, final=True)
+
+    def _find_latest_checkpoint(self, output_dir: str) -> Optional[str]:
+        """output_dir 내의 checkpoint-XXXX 폴더 중 최신 항목을 찾음."""
+        p = Path(output_dir)
+        if not p.exists():
+            return None
+        
+        checkpoints = list(p.glob("checkpoint-*"))
+        if not checkpoints:
+            return None
+        
+        # 폴더 이름에서 숫자를 추출하여 정렬
+        def get_step(path: Path):
+            try:
+                return int(path.name.split("-")[1])
+            except (ValueError, IndexError):
+                return -1
+        
+        latest = max(checkpoints, key=get_step)
+        if get_step(latest) == -1:
+            return None
+            
+        return str(latest)
 
     def _save_checkpoint(
         self,
