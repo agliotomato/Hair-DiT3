@@ -250,11 +250,12 @@ class HairS2INet(nn.Module):
         ctrl_cond    = torch.cat([sketch_latent + matte_feat, mt_latent], dim=1)
         matte_tokens = self.matte_tokenizer(mt_latent)
 
-        z = torch.randn_like(z_bg)
+        z = torch.randn(z_bg.shape, dtype=torch.bfloat16, device=device)
         self.scheduler.set_timesteps(num_steps, device=device)
 
         for step_idx, t in enumerate(self.scheduler.timesteps):
             t_batch = t.unsqueeze(0).to(device)
+            z = z.to(torch.bfloat16)
 
             residuals_cond = self.sd3_controlnet(
                 hidden_states=z,
@@ -289,10 +290,10 @@ class HairS2INet(nn.Module):
                 noise_pred_cond - noise_pred_uncond
             )
 
-            z = self.scheduler.step(noise_pred, t, z).prev_sample
+            z = self.scheduler.step(noise_pred, t, z).prev_sample.to(torch.bfloat16)
 
             sigma = self.scheduler.sigmas[step_idx].to(device)
-            z = self.compositor(z, z_bg, mt_latent, sigma.unsqueeze(0).expand(1))
+            z = self.compositor(z, z_bg, mt_latent, sigma.unsqueeze(0).expand(1)).to(torch.bfloat16)
 
         # Decoding: (latent / scale) + shift
         z_raw = (z / self.vae_scale_factor) + self.vae_shift_factor
