@@ -237,11 +237,11 @@ class HairS2INet(nn.Module):
         pooled_embeds = self.null_pooled_projections
 
         # Encoding: (raw - shift) * scale
-        z_bg = self.vae.encode(bg_tensor).latent_dist.sample()
+        z_bg = self.vae.encode(bg_tensor).latent_dist.sample().to(torch.bfloat16)
         z_bg = (z_bg - self.vae_shift_factor) * self.vae_scale_factor
 
         # Compute ctrl_cond once (sketch/matte fixed across steps)
-        sketch_latent = self.vae.encode(sk_tensor).latent_dist.sample()
+        sketch_latent = self.vae.encode(sk_tensor).latent_dist.sample().to(torch.bfloat16)
         sketch_latent = (sketch_latent - self.vae_shift_factor) * self.vae_scale_factor
         matte_feat   = self.matte_cnn(mt_tensor)
         mt_latent    = F.interpolate(
