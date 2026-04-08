@@ -213,6 +213,7 @@ class HairS2INet(nn.Module):
         background:     "PIL.Image.Image",
         sketch:         "PIL.Image.Image",
         matte:          "PIL.Image.Image",
+        prompt:         Optional[str] = None,
         num_steps:      int   = 28,
         guidance_scale: float = 7.0,
         size:           Tuple[int, int] = (512, 512),
