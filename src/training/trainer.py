@@ -122,6 +122,7 @@ class Trainer:
             [
                 {"params": model.matte_cnn.parameters()},
                 {"params": model.sd3_controlnet.parameters()},
+                {"params": [model.null_encoder_hidden_states, model.null_pooled_projections]},
             ],
             lr=t["learning_rate"],
             weight_decay=1e-2,
@@ -179,14 +180,6 @@ class Trainer:
                 timestep = self._sample_sigmas(B, model.scheduler)
 
                 with torch.no_grad():
-                    prompt_embeds_list, pooled_embeds_list = [], []
-                    for p in prompts:
-                        pe, pp = model.encode_prompt(p, self.device)
-                        prompt_embeds_list.append(pe)
-                        pooled_embeds_list.append(pp)
-                    prompt_embeds = torch.cat(prompt_embeds_list, dim=0)
-                    pooled_embeds = torch.cat(pooled_embeds_list, dim=0)
-
                     vae_dtype = next(model.vae.parameters()).dtype
                     z_target = model.vae.encode(target_img.to(vae_dtype)).latent_dist.sample()
                     z_target = z_target.float() * model.vae_scale_factor
@@ -198,8 +191,6 @@ class Trainer:
                         background=background,
                         sketch=sketch,
                         matte=matte,
-                        prompt_embeds=prompt_embeds,
-                        pooled_embeds=pooled_embeds,
                         timestep=timestep,
                         target_latent=z_target,
                         noise=noise,
@@ -304,6 +295,10 @@ class Trainer:
         state = {
             "matte_cnn":      model.matte_cnn.state_dict(),
             "sd3_controlnet": model.sd3_controlnet.state_dict(),
+            "null_embeddings": {
+                "hidden_states": model.null_encoder_hidden_states,
+                "pooled_projections": model.null_pooled_projections,
+            },
             "step":           step,
         }
         torch.save(state, save_dir / "hair_s2i_modules.pt")
@@ -313,6 +308,10 @@ class Trainer:
                 ema_state = {
                     "matte_cnn":      model.matte_cnn.state_dict(),
                     "sd3_controlnet": model.sd3_controlnet.state_dict(),
+                    "null_embeddings": {
+                        "hidden_states": model.null_encoder_hidden_states,
+                        "pooled_projections": model.null_pooled_projections,
+                    },
                     "step":           step,
                 }
             torch.save(ema_state, save_dir / "hair_s2i_modules_ema.pt")

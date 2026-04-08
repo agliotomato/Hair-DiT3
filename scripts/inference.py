@@ -38,12 +38,25 @@ def main():
     model.eval()
 
     # 체크포인트 로드 (신규 모듈만)
-    print(f"체크포인트 로드: {args.checkpoint}")
-    state = torch.load(args.checkpoint, map_location=device)
-    model.sketch_encoder.load_state_dict(state["sketch_encoder"])
-    model.latent_gate.load_state_dict(state["latent_gate"])
-    model.hair_controlnet.load_state_dict(state["hair_controlnet"])
-    print(f"  step={state.get('step', 'unknown')}")
+    if args.checkpoint:
+        print(f"체크포인트 로드: {args.checkpoint}")
+        state = torch.load(args.checkpoint, map_location=device)
+        
+        # 신규 모듈 (matte_cnn, sd3_controlnet, null_embeddings) 로드
+        if "matte_cnn" in state:
+            model.matte_cnn.load_state_dict(state["matte_cnn"])
+            model.sd3_controlnet.load_state_dict(state["sd3_controlnet"])
+            if "null_embeddings" in state:
+                # nn.Parameter 직접 할당 대신 데이터 복사
+                model.null_encoder_hidden_states.data.copy_(state["null_embeddings"]["hidden_states"].data)
+                model.null_pooled_projections.data.copy_(state["null_embeddings"]["pooled_projections"].data)
+            print(f"  Custom modules loaded (step={state.get('step', 'unknown')})")
+        else:
+            # 전체 모델 state_dict인 경우
+            model.load_state_dict(state, strict=False)
+            print("  Full model state_dict loaded.")
+    else:
+        print("체크포인트 없이 기본 상태로 추론을 진행합니다.")
 
     # 입력 이미지 로드
     background = Image.open(args.background).convert("RGB")
