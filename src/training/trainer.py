@@ -84,6 +84,7 @@ class Trainer:
 
         if t.get("gradient_checkpointing", True):
             model.transformer.enable_gradient_checkpointing()
+            model.sd3_controlnet.enable_gradient_checkpointing()
 
         # 체크포인트 로드
         resume_from = t.get("resume_from")

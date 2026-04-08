@@ -96,21 +96,19 @@ class HairS2INet(nn.Module):
         # MatteCNN: zero-init -> matte_feat~=0 at init -> sane start
         self.matte_cnn = MatteCNN(out_channels=16)
 
-        # SD3ControlNetModel initialized from transformer weights
-        # extra_conditioning_channels=1 -> pos_embed_input accepts 17ch (zero-init internally)
-        self.sd3_controlnet = SD3ControlNetModel.from_pretrained(
-            pretrained_model_name_or_path,
-            subfolder="transformer",
-            extra_conditioning_channels=1,
-            ignore_mismatched_sizes=True,
-            low_cpu_mem_usage=False,
-            torch_dtype=torch.bfloat16,
-        )
-
         # MM-DiT Base Transformer (Frozen or partially trainable)
         self.transformer = SD3Transformer2DModel.from_pretrained(
             pretrained_model_name_or_path,
             subfolder="transformer",
+            torch_dtype=torch.bfloat16,
+        )
+
+        # SD3ControlNetModel initialized from transformer weights (12 layers for B8 safety)
+        # extra_conditioning_channels=1 -> pos_embed_input accepts 17ch (zero-init internally)
+        self.sd3_controlnet = SD3ControlNetModel.from_transformer(
+            self.transformer,
+            num_layers=12,
+            extra_conditioning_channels=1,
             torch_dtype=torch.bfloat16,
         )
 
