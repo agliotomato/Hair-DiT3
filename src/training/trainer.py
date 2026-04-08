@@ -330,7 +330,23 @@ class Trainer:
                             + " ".join(f"{k}={v:.4f}" for k, v in avg.items())
                         )
                         if use_wandb:
-                            wandb.log({**avg, "epoch": epoch + 1, "lr": optimizer.param_groups[0]["lr"]}, step=global_step)
+                            # ── 이미지 로깅 (메모리 안전 버전) ──
+                            log_dict = {**avg, "epoch": epoch + 1, "lr": optimizer.param_groups[0]["lr"]}
+                            
+                            # pred_image가 있는 경우에만 로깅 (LPIPS/Edge 활성화 시)
+                            if pred_image is not None and global_step % (log_every * 10) == 0:
+                                samples = []
+                                # 메모리 보호를 위해 최대 4장만, 그리고 10번에 한 번만 로깅
+                                for i in range(min(4, pred_image.shape[0])): 
+                                    row = torch.cat([
+                                        (sketch[i] + 1.0) / 2.0,
+                                        (target_img[i] + 1.0) / 2.0,
+                                        (pred_image[i].clamp(-1, 1) + 1.0) / 2.0
+                                    ], dim=2) # 가로로 [Sketch | GroundTruth | Prediction]
+                                    samples.append(wandb.Image(row.detach().permute(1, 2, 0).cpu().numpy(), caption=f"Step {global_step}"))
+                                log_dict["samples"] = samples
+                            
+                            wandb.log(log_dict, step=global_step)
                         running_loss = {}
 
                     if global_step % save_every == 0:

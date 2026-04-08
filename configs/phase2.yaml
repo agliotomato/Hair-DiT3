@@ -6,10 +6,13 @@ base: configs/base.yaml
 training:
   phase: 2
   dataset: braid_train
-  resume_from: outputs/phase1/final/hair_s2i_modules.pt
+  resume_from: outputs/phase1/checkpoint-19000
   epochs: 50
   learning_rate: 5.0e-5
   warmup_steps: 100
+  use_wandb: true
+  wandb_project: "hair-dit3"
+  wandb_run_name: "phase2_braid_specialization"
   loss_weights:
     flow: 1.0
     bg: 3.0
