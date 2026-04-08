@@ -313,7 +313,7 @@ class Trainer:
                                         (target_img[i] + 1.0) / 2.0,
                                         (pred_image[i].clamp(-1, 1) + 1.0) / 2.0
                                     ], dim=2) # 가로로 붙이기
-                                    samples.append(wandb.Image(row.permute(1, 2, 0).cpu().numpy(), caption=f"Step {global_step}"))
+                                    samples.append(wandb.Image(row.detach().permute(1, 2, 0).cpu().numpy(), caption=f"Step {global_step}"))
                                 log_dict["samples"] = samples
                             
                             wandb.log(log_dict, step=global_step)
