@@ -228,9 +228,9 @@ class HairS2INet(nn.Module):
         if seed is not None:
             torch.manual_seed(seed)
 
-        bg_tensor = preprocess_image(background, size, device)
-        sk_tensor = preprocess_sketch(sketch, size, device)
-        mt_tensor = preprocess_matte(matte, size, device)
+        bg_tensor = preprocess_image(background, size, device).to(torch.bfloat16)
+        sk_tensor = preprocess_sketch(sketch, size, device).to(torch.bfloat16)
+        mt_tensor = preprocess_matte(matte, size, device).to(torch.bfloat16)
 
         # prompt encoding 제거 -> null_parameters 사용
         prompt_embeds = self.null_encoder_hidden_states
