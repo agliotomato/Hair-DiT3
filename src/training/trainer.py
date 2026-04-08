@@ -174,7 +174,6 @@ class Trainer:
                 sketch     = batch["sketch"].to(self.device, dtype=torch.float32)
                 matte      = batch["matte"].to(self.device, dtype=torch.float32)
                 target_img = batch["target"].to(self.device, dtype=torch.float32)
-                prompts    = batch["prompt"]
 
                 B        = background.shape[0]
                 timestep = self._sample_sigmas(B, model.scheduler)
@@ -182,7 +181,7 @@ class Trainer:
                 with torch.no_grad():
                     vae_dtype = next(model.vae.parameters()).dtype
                     z_target = model.vae.encode(target_img.to(vae_dtype)).latent_dist.sample()
-                    z_target = z_target.float() * model.vae_scale_factor
+                    z_target = (z_target.float() - model.vae_shift_factor) * model.vae_scale_factor
 
                 noise = torch.randn_like(z_target)
 
@@ -200,7 +199,7 @@ class Trainer:
 
                     with torch.no_grad():
                         z_bg = model.vae.encode(background.to(vae_dtype)).latent_dist.sample()
-                        z_bg = z_bg.float() * model.vae_scale_factor
+                        z_bg = (z_bg.float() - model.vae_shift_factor) * model.vae_scale_factor
 
                     from ..utils.preprocess import matte_to_latent
                     matte_latent = matte_to_latent(matte, z_bg.shape[-2:])
@@ -210,7 +209,7 @@ class Trainer:
                     pred_image = None
                     if lw.get("lpips", 0) > 0 or lw.get("edge", 0) > 0:
                         pred_image = model.vae.decode(
-                            (pred_z0 / model.vae_scale_factor).to(vae_dtype)
+                            ((pred_z0 / model.vae_scale_factor) + model.vae_shift_factor).to(vae_dtype)
                         ).sample.float()
 
                     total_loss, loss_dict = criterion(

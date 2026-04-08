@@ -7,10 +7,14 @@ SketchHairSalon (SIGGRAPH Asia 2021) successor:
   Feature Blending: matte-gated token-level soft gate
 
 ctrl_cond:
-  sketch [B,1,H,W] -> repeat(3) -> Frozen VAE -> sketch_latent [B,16,64,64]
+  sketch [B,3,H,W] -> RGB Colored Sketch -> Frozen VAE -> sketch_latent [B,16,64,64]
   matte  [B,1,H,W] -> MatteCNN               -> matte_feat   [B,16,64,64]
   matte            -> bilinear               -> matte_latent [B, 1,64,64]
   ctrl_cond = cat([sketch_latent + matte_feat, matte_latent]) -> [B,17,64,64]
+
+Architecture Note:
+- This model uses "Learned Null Embeddings" (nn.Parameter) instead of a text encoder.
+- External text prompts are IGNORED to focus the model's capacity on sketch/mask control.
 
 Feature-Level Blending (blend_start_ratio=0.5):
   residuals [B,1024,1152] x N blocks
@@ -77,6 +81,7 @@ class HairS2INet(nn.Module):
         self.vae.eval()
 
         self.vae_scale_factor = self.vae.config.scaling_factor
+        self.vae_shift_factor = getattr(self.vae.config, "shift_factor", 0.0609)
 
         # Learned Null Embedding — 텍스트 인코더 대체용 고정 신호
         # SD3.5 Medium 규격: prompt_embeds=[1, 333, 4096], pooled=[1, 2048]
@@ -133,7 +138,9 @@ class HairS2INet(nn.Module):
         pooled_embeds = self.null_pooled_projections.expand(B, -1)
         # 1. Build ctrl_cond
         with torch.no_grad():
-            sketch_latent = self.vae.encode(sketch).latent_dist.sample() * self.vae_scale_factor      # [B,16,H/8,W/8]
+            # Encoding: (raw - shift) * scale
+            sketch_latent = self.vae.encode(sketch).latent_dist.sample()
+            sketch_latent = (sketch_latent - self.vae_shift_factor) * self.vae_scale_factor
 
         matte_feat   = self.matte_cnn(matte)                    # [B,16,H/8,W/8]  trainable
         matte_latent = F.interpolate(
@@ -185,7 +192,6 @@ class HairS2INet(nn.Module):
         background:     "PIL.Image.Image",
         sketch:         "PIL.Image.Image",
         matte:          "PIL.Image.Image",
-        prompt:         str,
         num_steps:      int   = 28,
         guidance_scale: float = 7.0,
         size:           Tuple[int, int] = (512, 512),
@@ -208,10 +214,13 @@ class HairS2INet(nn.Module):
         prompt_embeds = self.null_encoder_hidden_states
         pooled_embeds = self.null_pooled_projections
 
-        z_bg = self.vae.encode(bg_tensor).latent_dist.sample() * self.vae_scale_factor
+        # Encoding: (raw - shift) * scale
+        z_bg = self.vae.encode(bg_tensor).latent_dist.sample()
+        z_bg = (z_bg - self.vae_shift_factor) * self.vae_scale_factor
 
         # Compute ctrl_cond once (sketch/matte fixed across steps)
-        sketch_latent = self.vae.encode(sk_tensor).latent_dist.sample() * self.vae_scale_factor
+        sketch_latent = self.vae.encode(sk_tensor).latent_dist.sample()
+        sketch_latent = (sketch_latent - self.vae_shift_factor) * self.vae_scale_factor
         matte_feat   = self.matte_cnn(mt_tensor)
         mt_latent    = F.interpolate(
             mt_tensor, size=z_bg.shape[-2:], mode='bilinear', align_corners=False
@@ -263,7 +272,9 @@ class HairS2INet(nn.Module):
             sigma = self.scheduler.sigmas[step_idx].to(device)
             z = self.compositor(z, z_bg, mt_latent, sigma.unsqueeze(0).expand(1))
 
-        image = self.vae.decode(z / self.vae_scale_factor).sample
+        # Decoding: (latent / scale) + shift
+        z_raw = (z / self.vae_scale_factor) + self.vae_shift_factor
+        image = self.vae.decode(z_raw).sample
         return postprocess_image(image)
 
     # ------------------------------------------------------------------
