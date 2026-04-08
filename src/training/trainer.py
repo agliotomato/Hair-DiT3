@@ -88,7 +88,7 @@ class Trainer:
 
         # 체크포인트 로드
         resume_from = t.get("resume_from")
-        output_dir = self.config["checkpointing"]["output_dir"]
+        output_dir = cfg["checkpointing"]["output_dir"]
         
         # ── 자동 Resume 기능 (latest) ──
         if resume_from == "latest":
