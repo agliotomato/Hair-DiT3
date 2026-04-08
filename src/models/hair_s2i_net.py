@@ -107,6 +107,19 @@ class HairS2INet(nn.Module):
             torch_dtype=torch.bfloat16,
         )
 
+        # MM-DiT Base Transformer (Frozen or partially trainable)
+        self.transformer = SD3Transformer2DModel.from_pretrained(
+            pretrained_model_name_or_path,
+            subfolder="transformer",
+            torch_dtype=torch.bfloat16,
+        )
+
+        # Scheduler
+        self.scheduler = FlowMatchEulerDiscreteScheduler.from_pretrained(
+            pretrained_model_name_or_path,
+            subfolder="scheduler",
+        )
+
         # No-parameter modules
         self.matte_tokenizer = MattePatchTokenizer()
         self.compositor = TimestepAwareLatentCompositor()
