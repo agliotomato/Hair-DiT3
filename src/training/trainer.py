@@ -199,8 +199,7 @@ class Trainer:
         save_every  = cfg["checkpointing"].get("save_every", 1000)
 
         # ── 학습 루프 ──
-        global_step    = 0
-        grad_accum_cnt = 0
+        # (global_step, grad_accum_cnt는 위에서 resume 로직에 의해 설정됨)
         running_loss: Dict[str, float] = {}
 
         model.train()
@@ -300,7 +299,8 @@ class Trainer:
                                 pg["initial_lr"] = pg["lr"]
                             pg["lr"] = pg["initial_lr"] * lr_scale
                     else:
-                        lr_scheduler.step()
+                        # 스케줄러가 현재 step에 맞게 작동하도록 보정
+                        lr_scheduler.step(global_step - warmup_steps)
 
                     optimizer.zero_grad()
                     if ema_model is not None:
