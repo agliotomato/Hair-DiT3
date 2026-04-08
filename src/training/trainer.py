@@ -58,17 +58,23 @@ class Trainer:
     def train(self):
         cfg     = self.cfg
         t       = cfg["training"]
-        ckpt    = cfg["checkpointing"]
-        model_c = cfg["model"]
-        data_c  = cfg["data"]
-        lw      = t["loss_weights"]
-
+        output_dir = cfg["checkpointing"]["output_dir"]
+        
         # ── 모델 초기화 ──
+        model_c = cfg["model"]
         logger.info(f"모델 로드: {model_c['model_id']}")
         model = HairS2INet(
             model_c["model_id"],
             blend_start_ratio=model_c["blend_start_ratio"],
         ).to(self.device)
+
+        # ── VAE 메모리 최적화 ──
+        if hasattr(model.vae, "enable_tiling"):
+            model.vae.enable_tiling()
+        if hasattr(model.vae, "enable_slicing"):
+            model.vae.enable_slicing()
+        data_c  = cfg["data"]
+        lw      = t["loss_weights"]
 
         # ── WandB 초기화 ──
         use_wandb = t.get("use_wandb", False) and HAS_WANDB
@@ -88,7 +94,6 @@ class Trainer:
 
         # 체크포인트 로드
         resume_from = t.get("resume_from")
-        output_dir = cfg["checkpointing"]["output_dir"]
         
         # ── 자동 Resume 기능 (latest) ──
         if resume_from == "latest":
@@ -185,9 +190,8 @@ class Trainer:
         grad_accum  = t.get("gradient_accumulation_steps", 1)
         warmup_steps = t.get("warmup_steps", 0)
         grad_clip   = t.get("gradient_clip", 1.0)
-        log_every   = ckpt.get("log_every", 50)
-        save_every  = ckpt.get("save_every", 1000)
-        output_dir  = ckpt["output_dir"]
+        log_every   = cfg["checkpointing"].get("log_every", 50)
+        save_every  = cfg["checkpointing"].get("save_every", 1000)
 
         # ── 학습 루프 ──
         global_step    = 0
@@ -237,9 +241,16 @@ class Trainer:
 
                     pred_image = None
                     if lw.get("lpips", 0) > 0 or lw.get("edge", 0) > 0:
-                        pred_image = model.vae.decode(
-                            ((pred_z0 / model.vae_scale_factor) + model.vae_shift_factor).to(vae_dtype)
-                        ).sample.float()
+                        # ── VAE 디코딩 (메모리 절약을 위해 sub-batch로 처리) ──
+                        sub_bs = 2  # 한 장씩 혹은 두 장씩 처리
+                        pred_images = []
+                        latents = ((pred_z0 / model.vae_scale_factor) + model.vae_shift_factor).to(vae_dtype)
+                        for i in range(0, latents.shape[0], sub_bs):
+                            sub_latent = latents[i:i+sub_bs]
+                            img = model.vae.decode(sub_latent).sample.float()
+                            pred_images.append(img)
+                        pred_image = torch.cat(pred_images, dim=0)
+                        del pred_images, latents
 
                     total_loss, loss_dict = criterion(
                         noise_pred=noise_pred,
@@ -302,21 +313,7 @@ class Trainer:
                             + " ".join(f"{k}={v:.4f}" for k, v in avg.items())
                         )
                         if use_wandb:
-                            # ── 이미지 로깅 추가 ──
-                            # 텐서 [-1, 1] -> [0, 1] 변환 및 (H, W, C) 형식으로 변환하여 업로드
-                            log_dict = {**avg, "epoch": epoch + 1, "lr": optimizer.param_groups[0]["lr"]}
-                            if pred_image is not None:
-                                samples = []
-                                for i in range(min(4, pred_image.shape[0])): # 최대 4장만 로깅
-                                    row = torch.cat([
-                                        (sketch[i] + 1.0) / 2.0,
-                                        (target_img[i] + 1.0) / 2.0,
-                                        (pred_image[i].clamp(-1, 1) + 1.0) / 2.0
-                                    ], dim=2) # 가로로 붙이기
-                                    samples.append(wandb.Image(row.detach().permute(1, 2, 0).cpu().numpy(), caption=f"Step {global_step}"))
-                                log_dict["samples"] = samples
-                            
-                            wandb.log(log_dict, step=global_step)
+                            wandb.log({**avg, "epoch": epoch + 1, "lr": optimizer.param_groups[0]["lr"]}, step=global_step)
                         running_loss = {}
 
                     if global_step % save_every == 0:
