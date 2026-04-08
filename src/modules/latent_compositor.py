@@ -30,10 +30,11 @@ class TimestepAwareLatentCompositor:
 
     def __call__(
         self,
-        z_pred:    torch.Tensor,  # [B, 16, H/8, W/8]  현재 스텝 예측 latent
-        z_bg:      torch.Tensor,  # [B, 16, H/8, W/8]  원본 배경 clean latent
-        matte:     torch.Tensor,  # [B,  1, H/8, W/8]  헤어=1.0, 배경=0.0
-        sigma:     torch.Tensor,  # [B]  Flow Matching sigma (0=클린, 1=최대노이즈)
+        z_pred:    torch.Tensor,            # [B, 16, H/8, W/8]  현재 스텝 예측 latent
+        z_bg:      torch.Tensor,            # [B, 16, H/8, W/8]  원본 배경 clean latent
+        matte:     torch.Tensor,            # [B,  1, H/8, W/8]  헤어=1.0, 배경=0.0
+        sigma:     torch.Tensor,            # [B]  Flow Matching sigma (0=클린, 1=최대노이즈)
+        noise:     torch.Tensor = None,     # [B, 16, H/8, W/8]  고정 배경 노이즈 (None이면 매 스텝 새로 생성)
         max_blur:  int = 15,
     ) -> torch.Tensor:
         """
@@ -50,9 +51,12 @@ class TimestepAwareLatentCompositor:
                    배경 영역 = z_bg_noised (원본 배경을 현재 noise 수준으로)
         """
         # ── 1. SD3.5 Flow Matching noising (DDPM add_noise 사용 금지) ──
-        noise    = torch.randn_like(z_bg)
+        # noise를 외부에서 고정하면 배경 영역 trajectory가 일관됨 → 경계 아티팩트 감소
+        if noise is None:
+            noise = torch.randn_like(z_bg)
         s        = sigma.float().view(-1, 1, 1, 1).to(z_bg.device)
-        z_bg_noised = (1.0 - s) * z_bg + s * noise
+        z_bg_noised = (1.0 - s) * z_bg.float() + s * noise.float()
+        z_bg_noised = z_bg_noised.to(z_bg.dtype)
 
         # ── 2. 동적 blur radius ──
         # sigma: 0(클린)→1(노이즈)

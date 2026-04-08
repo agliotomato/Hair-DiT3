@@ -218,6 +218,7 @@ class HairS2INet(nn.Module):
         guidance_scale: float = 7.0,
         size:           Tuple[int, int] = (512, 512),
         seed:           Optional[int] = None,
+        use_compositor: bool  = True,
     ) -> "PIL.Image.Image":
         """
         Single-image inference. ctrl_cond computed once outside the loop.
@@ -251,6 +252,7 @@ class HairS2INet(nn.Module):
         matte_tokens = self.matte_tokenizer(mt_latent)
 
         z = torch.randn(z_bg.shape, dtype=torch.bfloat16, device=device)
+        bg_noise = torch.randn_like(z_bg)  # 배경 노이즈 고정 → compositor에서 재사용
         self.scheduler.set_timesteps(num_steps, device=device)
 
         for step_idx, t in enumerate(self.scheduler.timesteps):
@@ -292,8 +294,9 @@ class HairS2INet(nn.Module):
 
             z = self.scheduler.step(noise_pred, t, z).prev_sample.to(torch.bfloat16)
 
-            sigma = self.scheduler.sigmas[step_idx].to(device)
-            z = self.compositor(z, z_bg, mt_latent, sigma.unsqueeze(0).expand(1)).to(torch.bfloat16)
+            if use_compositor:
+                sigma = self.scheduler.sigmas[step_idx].to(device)
+                z = self.compositor(z, z_bg, mt_latent, sigma.unsqueeze(0).expand(1), noise=bg_noise).to(torch.bfloat16)
 
         # Decoding: (latent / scale) + shift
         z_raw = (z / self.vae_scale_factor) + self.vae_shift_factor

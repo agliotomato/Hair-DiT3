@@ -26,6 +26,8 @@ def parse_args():
     parser.add_argument("--guidance",    type=float, default=7.0)
     parser.add_argument("--size",        type=int, default=512)
     parser.add_argument("--seed",        type=int, default=42)
+    parser.add_argument("--no_compositor", action="store_true",
+                        help="compositor 비활성화 (디버그용)")
     return parser.parse_args()
 
 
@@ -74,6 +76,7 @@ def main():
         guidance_scale=args.guidance,
         size=(args.size, args.size),
         seed=args.seed,
+        use_compositor=not args.no_compositor,
     )
 
     result.save(args.output)
