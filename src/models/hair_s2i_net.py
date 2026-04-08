@@ -104,13 +104,22 @@ class HairS2INet(nn.Module):
         )
 
         # SD3ControlNetModel initialized from transformer weights (12 layers for B8 safety)
-        # extra_conditioning_channels=1 -> pos_embed_input accepts 17ch (zero-init internally)
+        # We manually set extra_conditioning_channels=1 to handle 16ch sketch + 1ch matte
         self.sd3_controlnet = SD3ControlNetModel.from_transformer(
             self.transformer,
             num_layers=12,
-            extra_conditioning_channels=1,
             torch_dtype=torch.bfloat16,
         )
+        # Manually patching conditioning channels if not set (legacy/version compatibility)
+        if self.sd3_controlnet.config.extra_conditioning_channels != 1:
+            self.sd3_controlnet.config.extra_conditioning_channels = 1
+            # Re-initialize pos_embed_input to accept 17 channels (16 + 1)
+            inner_dim = self.transformer.config.joint_attention_dim
+            self.sd3_controlnet.pos_embed_input = nn.Linear(16 + 1, inner_dim).to(
+                device=self.transformer.device, dtype=torch.bfloat16
+            )
+            nn.init.zeros_(self.sd3_controlnet.pos_embed_input.weight)
+            nn.init.zeros_(self.sd3_controlnet.pos_embed_input.bias)
 
         # Scheduler
         self.scheduler = FlowMatchEulerDiscreteScheduler.from_pretrained(
