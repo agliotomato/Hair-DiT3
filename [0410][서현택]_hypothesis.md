@@ -43,7 +43,7 @@ $$
 \hat{v} = v_{uncond} + w \cdot (v_{cond} - v_{uncond})
 $$
 
-**Compositor** — 매 스텝 배경 복원 (핵심):
+**Compositor** — 매 스텝 배경 복원:
 
 Flow Matching 공식으로 현재 $\sigma$ 수준에 맞게 배경 latent를 noising:
 
@@ -70,11 +70,6 @@ $$
 
 ### 출력 추출
 
-```python
-result_arr = np.array(model_output)                     # 전체 생성 이미지
-hair_only  = result_arr * ref_matte[..., None]          # hair 영역만 마스킹
-```
-
 $$
 I_{hair} = I_{result} \cdot m
 $$
@@ -86,11 +81,16 @@ $$
 
 ## Affine Transform 시각화
 
+sketch와 matte의 공간적 불일치를 보정하기 위해, **braid_2534의 sketch를 braid_2572의 matte에 맞춰 Affine Transform을 적용**하였다.  
+구체적으로, braid_2572의 matte에서 추출한 헤어 영역 경계를 기준으로 braid_2534의 sketch를 정렬(translation · scale · rotation)하여, 두 입력의 공간 좌표계를 통일하였다.
+
 ![affine](results/debug_affine/braid_2534_on_braid_2572.png)
 
 ---
 
 ## 생성 결과
+
+braid_2534의 sketch를 braid_2572의 matte에 Affine Transform으로 정렬한 뒤, 해당 조합(sketch: braid_2534 → affine-aligned, matte: braid_2572)을 입력으로 헤어를 생성하였다.
 
 | 원본 | Full | Hair Only |
 |:-:|:-:|:-:|
