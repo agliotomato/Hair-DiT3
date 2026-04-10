@@ -63,7 +63,7 @@ def main():
 
     # 입력 이미지 로드
     background = Image.open(args.background).convert("RGB")
-    sketch     = Image.open(args.sketch).convert("L")
+    sketch     = Image.open(args.sketch).convert("RGB")
     matte      = Image.open(args.matte).convert("L")
 
     print(f"추론 시작: prompt='{args.prompt}', steps={args.num_steps}, guidance={args.guidance}")

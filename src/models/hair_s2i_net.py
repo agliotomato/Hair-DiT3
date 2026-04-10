@@ -213,12 +213,15 @@ class HairS2INet(nn.Module):
         background:     "PIL.Image.Image",
         sketch:         "PIL.Image.Image",
         matte:          "PIL.Image.Image",
-        prompt:         Optional[str] = None,
-        num_steps:      int   = 28,
-        guidance_scale: float = 7.0,
-        size:           Tuple[int, int] = (512, 512),
-        seed:           Optional[int] = None,
-        use_compositor: bool  = True,
+        prompt:            Optional[str] = None,
+        num_steps:         int   = 28,
+        guidance_scale:    float = 7.0,
+        controlnet_scale:  float = 1.0,
+        size:              Tuple[int, int] = (512, 512),
+        seed:              Optional[int] = None,
+        use_compositor:    bool  = True,
+        noise_mode:        str   = "fixed",   # "fixed" | "random"
+        blur_schedule:     str   = "linear",  # "linear" | "cosine"
     ) -> "PIL.Image.Image":
         """
         Single-image inference. ctrl_cond computed once outside the loop.
@@ -262,7 +265,7 @@ class HairS2INet(nn.Module):
             residuals_cond = self.sd3_controlnet(
                 hidden_states=z,
                 controlnet_cond=ctrl_cond,
-                conditioning_scale=1.0,
+                conditioning_scale=controlnet_scale,
                 encoder_hidden_states=prompt_embeds,
                 pooled_projections=pooled_embeds,
                 timestep=t_batch,
@@ -299,7 +302,13 @@ class HairS2INet(nn.Module):
 
             if use_compositor:
                 sigma = self.scheduler.sigmas[step_idx].to(device)
-                z = self.compositor(z, z_bg, mt_latent, sigma.unsqueeze(0).expand(1), noise=bg_noise).to(torch.bfloat16)
+                z = self.compositor(
+                    z, z_bg, mt_latent,
+                    sigma.unsqueeze(0).expand(1),
+                    noise=bg_noise,
+                    noise_mode=noise_mode,
+                    blur_schedule=blur_schedule,
+                ).to(torch.bfloat16)
 
         # Decoding: (latent / scale) + shift
         z_raw = (z / self.vae_scale_factor) + self.vae_shift_factor

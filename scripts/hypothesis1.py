@@ -1,12 +1,15 @@
 """
 Hypothesis 1: Face Context Dependency 실험
 
-동일한 reference sketch를 여러 다른 인물에게 적용.
-sketch를 target matte bounding box에 affine warp하여 정렬 후 추론.
+sketch + matte + 위치를 완전히 고정하고, 얼굴(face)만 변경.
+DiT global attention이 face context를 hair 생성에 반영하는지 검증.
 
-실험 그룹:
-  back : braid_2534(ref), 2572, 2574, 2576, 2592, 2617
-  side : braid_2537(ref), 2539, 2676
+Fixed   : ref_sketch, ref_matte (warp 없음, 위치 고정), seed
+Varying : background = tgt_img * (1 - ref_matte)
+          → hair 구멍(ref_matte=1)은 검정, 얼굴+배경은 target 사람 픽셀
+
+이렇게 하면 모델이 보는 얼굴만 바뀌고, hair 생성 조건(sketch/matte)은 동일.
+출력 = hair_only (ref_matte로 마스킹).
 """
 import argparse
 import sys
@@ -21,11 +24,10 @@ from pathlib import Path
 from src.models.hair_s2i_net import HairS2INet
 
 
-def remove_hair_region(bg_pil: Image.Image, matte_pil: Image.Image,
-                       blur_radius: int = 20) -> Image.Image:
+def remove_hair_region(bg_pil: Image.Image, matte_pil: Image.Image) -> Image.Image:
     """
-    matte 영역(hair)을 주변 색상의 heavily blurred 값으로 채워 반환.
-    기존 머리 context를 제거하고 sketch만으로 생성하기 위함.
+    matte 영역(hair)을 검정(0)으로 마스킹하여 반환.
+    훈련 시 background = img * (1 - matte) 이므로 동일한 분포를 맞춤.
     """
     bg  = bg_pil.convert("RGB").resize((512, 512))
     mt  = matte_pil.convert("L").resize((512, 512))
@@ -33,24 +35,37 @@ def remove_hair_region(bg_pil: Image.Image, matte_pil: Image.Image,
     bg_arr = np.array(bg, dtype=np.float32)
     mt_arr = np.array(mt, dtype=np.float32) / 255.0  # [0,1]
 
-    # 강한 blur로 주변 색상 추정
-    blurred = np.array(bg.filter(ImageFilter.GaussianBlur(radius=blur_radius)),
-                       dtype=np.float32)
-
-    # hair 영역 = blurred 값, 나머지 = 원본
-    result = bg_arr * (1.0 - mt_arr[..., None]) + blurred * mt_arr[..., None]
+    # hair 영역 = 0 (검정), 배경 = 원본
+    result = bg_arr * (1.0 - mt_arr[..., None])
     return Image.fromarray(result.clip(0, 255).astype(np.uint8))
 
 
 GROUPS = {
-    "back": {
-        "ref":     "braid_2534",
+    "back_2534": {
+        "ref":     "braid_2534",  # sketch + matte 고정 (warp 없음)
         "targets": ["braid_2534", "braid_2572", "braid_2574",
                     "braid_2576", "braid_2592", "braid_2617"],
     },
-    "side": {
-        "ref":     "braid_2537",
-        "targets": ["braid_2537", "braid_2539", "braid_2625", "braid_2676"],
+    "back_2562": {
+        "ref":     "braid_2562",
+        "targets": ["braid_2562", "braid_2572", "braid_2574",
+                    "braid_2576", "braid_2592", "braid_2617"],
+    },
+    "nanobana_2537": {
+        "ref":      "braid_2537",          # sketch + matte 고정
+        "face_dir": "dataset/nanobanana",
+        "targets":  [
+            "braid_2537_smile",   # 웃는 얼굴
+            "braid_2537_sad",     # 슬픈 얼굴
+        ],
+    },
+    "nanobana_2562": {
+        "ref":      "braid_2562",
+        "face_dir": "dataset/nanobanana",
+        "targets":  [
+            "braid_2562_smile",
+            "braid_2562_sad",
+        ],
     },
 }
 
@@ -100,12 +115,13 @@ def warp_sketch_to_matte(
     coeffs = (1 / scale_x, 0, -tx / scale_x,
               0, 1 / scale_y, -ty / scale_y)
 
+    fillcolor = 0 if sketch_pil.mode == "L" else (0, 0, 0)
     warped = sketch_pil.transform(
         (W, H),
         Image.AFFINE,
         coeffs,
         resample=Image.BILINEAR,
-        fillcolor=0,
+        fillcolor=fillcolor,
     )
     return warped
 
@@ -141,8 +157,9 @@ def parse_args():
     parser.add_argument("--data_root",  type=str, default="dataset/braid")
     parser.add_argument("--output_dir", type=str, default="results/hypothesis1")
     parser.add_argument("--num_steps",  type=int,   default=28)
-    parser.add_argument("--guidance",   type=float, default=7.5)
-    parser.add_argument("--size",       type=int,   default=512)
+    parser.add_argument("--guidance",          type=float, default=7.5)
+    parser.add_argument("--controlnet_scale", type=float, default=1.0)
+    parser.add_argument("--size",             type=int,   default=512)
     parser.add_argument("--seed",       type=int,   default=42)
     return parser.parse_args()
 
@@ -156,39 +173,107 @@ def main():
     model = load_model(args.pretrained_model, args.checkpoint, device)
 
     for group_name, group in GROUPS.items():
-        ref_id = group["ref"]
+        ref_id   = group["ref"]
+        face_dir = Path(group["face_dir"]) if "face_dir" in group else None
         out_group = output_dir / group_name
         out_group.mkdir(parents=True, exist_ok=True)
 
-        ref_sketch = Image.open(data_root / "sketch" / "test" / f"{ref_id}.png").convert("L")
+        ref_sketch = Image.open(data_root / "sketch" / "test" / f"{ref_id}.png").convert("RGB")
         ref_matte  = Image.open(data_root / "matte"  / "test" / f"{ref_id}.png").convert("L")
+        ref_mt_arr = np.array(ref_matte.convert("L").resize((args.size, args.size)),
+                              dtype=np.float32) / 255.0
 
-        for tgt_id in group["targets"]:
-            out_path = out_group / f"{ref_id}_on_{tgt_id}.png"
-            if out_path.exists():
-                print(f"[skip] {out_path}")
-                continue
+        grid_imgs = []
 
-            tgt_bg    = Image.open(data_root / "img"    / "test" / f"{tgt_id}.png").convert("RGB")
-            tgt_matte = Image.open(data_root / "matte"  / "test" / f"{tgt_id}.png").convert("L")
-
-            # 기존 머리 제거 → sketch만으로 생성되도록
-            tgt_bg = remove_hair_region(tgt_bg, tgt_matte)
-
-            warped_sketch = warp_sketch_to_matte(ref_sketch, ref_matte, tgt_matte)
-
-            print(f"[{group_name}] {ref_id} → {tgt_id}")
-            result = model.inference(
-                background=tgt_bg,
-                sketch=warped_sketch,
-                matte=tgt_matte,
+        # baseline: ref 본인 이미지로 추론
+        baseline_path = out_group / f"{ref_id}_full_{ref_id}.png"
+        baseline_hair_path = out_group / f"{ref_id}_bg_{ref_id}.png"
+        if baseline_path.exists():
+            print(f"[skip baseline] {baseline_path}")
+            baseline_full = Image.open(baseline_path).convert("RGB")
+            baseline_hair = Image.open(baseline_hair_path).convert("RGB")
+        else:
+            ref_img = Image.open(data_root / "img" / "test" / f"{ref_id}.png").convert("RGB")
+            print(f"[{group_name}] baseline: ref={ref_id}")
+            baseline_result = model.inference(
+                background=ref_img,
+                sketch=ref_sketch,
+                matte=ref_matte,
                 num_steps=args.num_steps,
                 guidance_scale=args.guidance,
+                controlnet_scale=args.controlnet_scale,
                 size=(args.size, args.size),
                 seed=args.seed,
             )
-            result.save(out_path)
-            print(f"  저장: {out_path}")
+            baseline_arr  = np.array(baseline_result.resize((args.size, args.size)), dtype=np.float32)
+            baseline_hair_arr = (baseline_arr * ref_mt_arr[..., None]).clip(0, 255).astype(np.uint8)
+            baseline_full = baseline_result.resize((args.size, args.size))
+            baseline_hair = Image.fromarray(baseline_hair_arr)
+            baseline_full.save(baseline_path)
+            baseline_hair.save(baseline_hair_path)
+            print(f"  저장: {baseline_path}")
+        grid_imgs.append((f"{ref_id}(원본)", baseline_full, baseline_hair))
+
+        for tgt_name in group["targets"]:
+            out_path = out_group / f"{ref_id}_bg_{tgt_name}.png"
+            if out_path.exists():
+                print(f"[skip] {out_path}")
+                full_path = out_group / f"{ref_id}_full_{tgt_name}.png"
+                grid_imgs.append((
+                    tgt_name,
+                    Image.open(full_path).convert("RGB") if full_path.exists() else Image.open(out_path).convert("RGB"),
+                    Image.open(out_path).convert("RGB"),
+                ))
+                continue
+
+            # 나노바나나 그룹이면 face_dir에서, 아니면 braid img/test에서 로드
+            if face_dir is not None:
+                tgt_img = Image.open(face_dir / f"{tgt_name}.png").convert("RGB")
+            else:
+                tgt_img = Image.open(data_root / "img" / "test" / f"{tgt_name}.png").convert("RGB")
+
+            print(f"[{group_name}] ref={ref_id}  face={tgt_name}")
+            result = model.inference(
+                background=tgt_img,
+                sketch=ref_sketch,
+                matte=ref_matte,
+                num_steps=args.num_steps,
+                guidance_scale=args.guidance,
+                controlnet_scale=args.controlnet_scale,
+                size=(args.size, args.size),
+                seed=args.seed,
+            )
+
+            result_arr = np.array(result.resize((args.size, args.size)), dtype=np.float32)
+            hair_only  = (result_arr * ref_mt_arr[..., None]).clip(0, 255).astype(np.uint8)
+            hair_img   = Image.fromarray(hair_only)
+
+            # hair_only 저장
+            hair_img.save(out_path)
+            # full 결과 저장
+            full_path  = out_group / f"{ref_id}_full_{tgt_name}.png"
+            result.resize((args.size, args.size)).save(full_path)
+            print(f"  저장: {out_path}, {full_path}")
+            grid_imgs.append((tgt_name, result.resize((args.size, args.size)), hair_img))
+
+        # 비교 그리드: 각 표정마다 [full | hair_only] 2열
+        if grid_imgs:
+            from PIL import ImageDraw
+            label_h  = 20
+            cell_w   = args.size
+            n        = len(grid_imgs)
+            # 열: 표정 수 × 2 (full + hair)
+            grid_w   = (cell_w * 2 + 4) * n + 4 * (n - 1)
+            grid     = Image.new("RGB", (grid_w, cell_w + label_h), (20, 20, 20))
+            draw     = ImageDraw.Draw(grid)
+            for i, (name, full_img, hair_img) in enumerate(grid_imgs):
+                x = i * (cell_w * 2 + 8)
+                draw.text((x + 4,           2), f"{name} full", fill=(180, 180, 180))
+                draw.text((x + cell_w + 8,  2), f"{name} hair", fill=(100, 220, 100))
+                grid.paste(full_img, (x,           label_h))
+                grid.paste(hair_img, (x + cell_w + 4, label_h))
+            grid.save(out_group / "comparison_grid.png")
+            print(f"  그리드 저장: {out_group}/comparison_grid.png")
 
     print("완료.")
 
