@@ -167,7 +167,7 @@ class ComposeAug:
 
 def build_augmentation_pipeline(phase: str = "train") -> ComposeAug:
     return ComposeAug([
-        StrokeColorSampler(p=1.0),
+        StrokeColorSampler(p=0.0),
         ThicknessJitter(p=0.5),
         MatteBoundaryPerturbation(p=0.3),
     ])
