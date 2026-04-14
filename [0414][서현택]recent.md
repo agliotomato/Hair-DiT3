@@ -1,6 +1,6 @@
 # 최신 아키텍처 정리 (2026-04-14)
 
-![Architecture](mine.png)
+![Architecture](results/mine.png)
 
 ---
 
