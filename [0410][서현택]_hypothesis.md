@@ -41,14 +41,12 @@ for t in timesteps:
 
 Flow Matching 공식으로 현재 σ 수준에 맞게 배경 latent를 noising:
 
-
-
 Soft Matte: σ가 작아질수록(클린에 가까울수록) blur 반경 증가:
 
-$
+
 **Compositor의 역할**:  
-- **hair 영역** (m̃ ≈ 1): DiT가 예측한 latent 유지 → 헤어 자유 생성  
-- **non-hair 영역** (m̃ ≈ 0): z_bg를 현재 σ 수준으로 noising 후 덮어씌움 → 얼굴/배경을 원본 픽셀로 보존  
+- **hair 영역**: DiT가 예측한 latent 유지 → 헤어 자유 생성  
+- **non-hair 영역**: z_bg를 현재 σ 수준으로 noising 후 덮어씌움 → 얼굴/배경을 원본 픽셀로 보존  
 - **경계 soft blur**: σ → 0 일수록 m̃에 Gaussian blur 적용 → 경계 artifact 방지
 
 ### 출력 추출
@@ -286,6 +284,6 @@ denoising 28스텝 동안 매 스텝마다:
 
 | 배경 조건 | 입력 배경 | 생성 결과 |
 |:-:|:-:|:-:|
-| white_bg | <img src="results/hypothesis2/braid_2653/white_bg_input_bg.png" width="200"> | <img src="results/hypothesis2/braid_2653/whiteㅊbg.png" width="200"> |
+| white_bg | <img src="results/hypothesis2/braid_2653/white_bg_input_bg.png" width="200"> | <img src="results/hypothesis2/braid_2653/white_bg.png" width="200"> |
 | texture_bg | <img src="results/hypothesis2/braid_2653/texture_bg_input_bg.png" width="200"> | <img src="results/hypothesis2/braid_2653/texture_bg.png" width="200"> |
 | complex_bg | <img src="results/hypothesis2/braid_2653/complex_bg_input_bg.png" width="200"> | <img src="results/hypothesis2/braid_2653/complex_bg.png" width="200"> |
