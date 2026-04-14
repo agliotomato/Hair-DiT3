@@ -8,14 +8,14 @@
 
 | stem | 원본 | sketch | SketchHairSalon | Ours|
 |:----:|:----:|:------:|:---------------:|:----------:|
-| braid_2548 | <img src="dataset3/braid/img/test/braid_2548.png" width="160"> | <img src="dataset3/braid/sketch/test/braid_2548.png" width="160"> | <img src="results/hairsalon/braid_2548.png" width="160"> | <img src="results/batch_infer_final2/braid_2548.png" width="160"> |
-| braid_2562 | <img src="dataset3/braid/img/test/braid_2562.png" width="160"> | <img src="dataset3/braid/sketch/test/braid_2562.png" width="160"> | <img src="results/hairsalon/braid_2562.png" width="160"> | <img src="results/batch_infer_final2/braid_2562.png" width="160"> |
-| braid_2574 | <img src="dataset3/braid/img/test/braid_2574.png" width="160"> | <img src="dataset3/braid/sketch/test/braid_2574.png" width="160"> | <img src="results/hairsalon/braid_2574.png" width="160"> | <img src="results/batch_infer_final2/braid_2574.png" width="160"> |
-| braid_2590 | <img src="dataset3/braid/img/test/braid_2590.png" width="160"> | <img src="dataset3/braid/sketch/test/braid_2590.png" width="160"> | <img src="results/hairsalon/braid_2590.png" width="160"> | <img src="results/batch_infer_final2/braid_2590.png" width="160"> |
-| braid_2592 | <img src="dataset3/braid/img/test/braid_2592.png" width="160"> | <img src="dataset3/braid/sketch/test/braid_2592.png" width="160"> | <img src="results/hairsalon/braid_2592.png" width="160"> | <img src="results/batch_infer_final2/braid_2592.png" width="160"> |
-| braid_2617 | <img src="dataset3/braid/img/test/braid_2617.png" width="160"> | <img src="dataset3/braid/sketch/test/braid_2617.png" width="160"> | <img src="results/hairsalon/braid_2617.png" width="160"> | <img src="results/batch_infer_final2/braid_2617.png" width="160"> |
-| braid_2625 | <img src="dataset3/braid/img/test/braid_2625.png" width="160"> | <img src="dataset3/braid/sketch/test/braid_2625.png" width="160"> | <img src="results/hairsalon/braid_2625.png" width="160"> | <img src="results/batch_infer_final2/braid_2625.png" width="160"> |
-| braid_2652 | <img src="dataset3/braid/img/test/braid_2652.png" width="160"> | <img src="dataset3/braid/sketch/test/braid_2652.png" width="160"> | <img src="results/hairsalon/braid_2652.png" width="160"> | <img src="results/batch_infer_final2/braid_2652.png" width="160"> |
+| braid_2548 | <img src="dataset/braid/img/test/braid_2548.png" width="160"> | <img src="dataset/braid/sketch/test/braid_2548.png" width="160"> | <img src="results/hairsalon/braid_2548.png" width="160"> | <img src="results/batch_infer_final2/braid_2548.png" width="160"> |
+| braid_2562 | <img src="dataset/braid/img/test/braid_2562.png" width="160"> | <img src="dataset/braid/sketch/test/braid_2562.png" width="160"> | <img src="results/hairsalon/braid_2562.png" width="160"> | <img src="results/batch_infer_final2/braid_2562.png" width="160"> |
+| braid_2574 | <img src="dataset/braid/img/test/braid_2574.png" width="160"> | <img src="dataset/braid/sketch/test/braid_2574.png" width="160"> | <img src="results/hairsalon/braid_2574.png" width="160"> | <img src="results/batch_infer_final2/braid_2574.png" width="160"> |
+| braid_2590 | <img src="dataset/braid/img/test/braid_2590.png" width="160"> | <img src="dataset/braid/sketch/test/braid_2590.png" width="160"> | <img src="results/hairsalon/braid_2590.png" width="160"> | <img src="results/batch_infer_final2/braid_2590.png" width="160"> |
+| braid_2592 | <img src="dataset/braid/img/test/braid_2592.png" width="160"> | <img src="dataset/braid/sketch/test/braid_2592.png" width="160"> | <img src="results/hairsalon/braid_2592.png" width="160"> | <img src="results/batch_infer_final2/braid_2592.png" width="160"> |
+| braid_2617 | <img src="dataset/braid/img/test/braid_2617.png" width="160"> | <img src="dataset/braid/sketch/test/braid_2617.png" width="160"> | <img src="results/hairsalon/braid_2617.png" width="160"> | <img src="results/batch_infer_final2/braid_2617.png" width="160"> |
+| braid_2625 | <img src="dataset/braid/img/test/braid_2625.png" width="160"> | <img src="dataset/braid/sketch/test/braid_2625.png" width="160"> | <img src="results/hairsalon/braid_2625.png" width="160"> | <img src="results/batch_infer_final2/braid_2625.png" width="160"> |
+| braid_2652 | <img src="dataset/braid/img/test/braid_2652.png" width="160"> | <img src="dataset/braid/sketch/test/braid_2652.png" width="160"> | <img src="results/hairsalon/braid_2652.png" width="160"> | <img src="results/batch_infer_final2/braid_2652.png" width="160"> |
 
 ---
 
