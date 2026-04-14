@@ -9,7 +9,7 @@ from scipy.ndimage import binary_erosion
 
 from scripts.hypothesis1 import get_matte_bbox, warp_sketch_to_matte
 
-DATA = Path("dataset/braid")
+DATA = Path("dataset3/braid")
 OUT  = Path("results/debug_affine")
 OUT.mkdir(parents=True, exist_ok=True)
 
