@@ -56,6 +56,10 @@ class Trainer:
         return (u * n_train).long().clamp(1, n_train - 1)
 
     def train(self):
+        import subprocess
+        branch = subprocess.check_output(["git", "branch", "--show-current"], text=True).strip()
+        print(f"\n[Branch: {branch}]\n")
+
         cfg     = self.cfg
         t       = cfg["training"]
         output_dir = cfg["checkpointing"]["output_dir"]
