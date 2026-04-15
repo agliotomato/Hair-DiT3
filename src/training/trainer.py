@@ -270,18 +270,29 @@ class Trainer:
 
                     pred_z0 = noise - noise_pred
 
+                    lpips_active = (
+                        criterion.phase == 2
+                        or (global_step / max(total_steps, 1)) >= criterion.lpips_warmup_ratio
+                    )
+                    need_grad_for_pred_image = (
+                        (lw.get("lpips", 0) > 0 and lpips_active) or 
+                        (criterion.phase == 2 and lw.get("edge", 0) > 0)
+                    )
+                    need_nograd_for_pred_image = (global_step % (log_every * 10) == 0)
+
                     pred_image = None
-                    if lw.get("lpips", 0) > 0 or lw.get("edge", 0) > 0:
-                        # ── VAE 디코딩 (메모리 절약을 위해 sub-batch로 처리) ──
-                        sub_bs = 2  # 한 장씩 혹은 두 장씩 처리
-                        pred_images = []
-                        latents = ((pred_z0 / model.vae_scale_factor) + model.vae_shift_factor).to(vae_dtype)
-                        for i in range(0, latents.shape[0], sub_bs):
-                            sub_latent = latents[i:i+sub_bs]
-                            img = model.vae.decode(sub_latent).sample.float()
-                            pred_images.append(img)
-                        pred_image = torch.cat(pred_images, dim=0)
-                        del pred_images, latents
+                    if need_grad_for_pred_image or need_nograd_for_pred_image:
+                        with torch.set_grad_enabled(need_grad_for_pred_image):
+                            # ── VAE 디코딩 (메모리 절약 최적화) ──
+                            sub_bs = 2  # 한 장씩 혹은 두 장씩 처리
+                            pred_images = []
+                            latents = ((pred_z0 / model.vae_scale_factor) + model.vae_shift_factor).to(vae_dtype)
+                            for i in range(0, latents.shape[0], sub_bs):
+                                sub_latent = latents[i:i+sub_bs]
+                                img = model.vae.decode(sub_latent).sample.float()
+                                pred_images.append(img)
+                            pred_image = torch.cat(pred_images, dim=0)
+                            del pred_images, latents
 
                     total_loss, loss_dict = criterion(
                         noise_pred=noise_pred,
