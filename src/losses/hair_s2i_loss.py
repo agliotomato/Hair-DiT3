@@ -1,15 +1,16 @@
 """
 HairS2ILoss — SD3.5 Hair Sketch-to-Image 복합 손실 함수
 
-L_total = L_flow + λ_bg·L_bg + λ_lpips·L_lpips + λ_edge·L_edge
+L_total = L_flow + λ_bg·L_bg + λ_color·L_color + λ_lpips·L_lpips + λ_edge·L_edge
 
   L_flow  (1.0):  Flow Matching masked MSE — 헤어=1.0, 배경=0.1
-  L_bg    (3.0):  배경 latent L2 보존 (배경 보존 핵심)
+  L_bg    (0.5):  배경 latent L2 보존
+  L_color (1.5):  sketch_latent ≈ pred_z0 헤어 영역 latent MSE — 색 following 핵심
   L_lpips (0.1):  LPIPS 지각 손실 — 헤어 영역만
   L_edge  (0.05): Sobel edge vs sketch 정합 — sketch stroke 있는데 edge 없으면 패널티
 
-Phase 1 (pretrain):  L_flow + L_bg  →  step 30% 이후 L_lpips 추가
-Phase 2 (finetune):  L_flow + L_bg + L_lpips + L_edge
+Phase 1 (pretrain):  L_flow + L_bg + L_color  →  step 30% 이후 L_lpips 추가
+Phase 2 (finetune):  L_flow + L_bg + L_color + L_lpips + L_edge
 """
 from typing import Dict, Optional, Tuple
 
@@ -109,7 +110,8 @@ class HairS2ILoss(nn.Module):
     def __init__(
         self,
         phase:              int   = 1,
-        lambda_bg:          float = 3.0,
+        lambda_bg:          float = 0.5,
+        lambda_color:       float = 1.5,
         lambda_lpips:       float = 0.1,
         lambda_edge:        float = 0.05,
         lpips_warmup_ratio: float = 0.3,
@@ -117,6 +119,7 @@ class HairS2ILoss(nn.Module):
         super().__init__()
         self.phase              = phase
         self.lambda_bg          = lambda_bg
+        self.lambda_color       = lambda_color
         self.lambda_lpips       = lambda_lpips
         self.lambda_edge        = lambda_edge
         self.lpips_warmup_ratio = lpips_warmup_ratio
@@ -131,6 +134,7 @@ class HairS2ILoss(nn.Module):
         pred_latent:   torch.Tensor,            # [B, 16, H/8, W/8]
         z_bg:          torch.Tensor,            # [B, 16, H/8, W/8]
         matte_latent:  torch.Tensor,            # [B,  1, H/8, W/8]
+        sketch_latent: Optional[torch.Tensor] = None,  # [B, 16, H/8, W/8]
         pred_image:    Optional[torch.Tensor] = None,  # [B, 3, H, W]
         target_image:  Optional[torch.Tensor] = None,  # [B, 3, H, W]
         sketch:        Optional[torch.Tensor] = None,  # [B, 3, H, W]
@@ -151,6 +155,15 @@ class HairS2ILoss(nn.Module):
         loss_dict["loss_bg"] = L_bg.item()
 
         total = L_flow + self.lambda_bg * L_bg
+
+        # ── L_color: sketch_latent ≈ pred_latent (헤어 영역 latent MSE) ──
+        if sketch_latent is not None and self.lambda_color > 0:
+            L_color = F.mse_loss(
+                pred_latent * matte_latent,
+                sketch_latent.float() * matte_latent,
+            )
+            loss_dict["loss_color"] = L_color.item()
+            total = total + self.lambda_color * L_color
 
         # ── LPIPS 활성화 조건 ──
         # Phase 1: total_steps의 30% 이후에 활성

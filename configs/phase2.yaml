@@ -5,6 +5,7 @@ base: configs/base.yaml
 
 training:
   phase: 2
+  seed: 42
   dataset: braid_train
   resume_from: /home/agliotomato/diglab/Hair-DiT3/outputs/phase2/checkpoint-25000
   epochs: 30
@@ -12,10 +13,11 @@ training:
   warmup_steps: 0
   use_wandb: true
   wandb_project: "hair-dit3"
-  wandb_run_name: "phase2_braid_continued"
+  wandb_run_name: "phase2_color_loss_bg0.5_c1.5_seed42"
   loss_weights:
     flow: 1.0
-    bg: 3.0
+    bg: 0.5
+    color: 1.5
     lpips: 0.2
     edge: 0.15
 

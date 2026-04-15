@@ -59,7 +59,17 @@ class Trainer:
         cfg     = self.cfg
         t       = cfg["training"]
         output_dir = cfg["checkpointing"]["output_dir"]
-        
+
+        # ── Seed 고정 ──
+        seed = t.get("seed", 42)
+        import random, numpy as np
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+        logger.info(f"Seed 고정: {seed}")
+
         # ── 모델 초기화 ──
         model_c = cfg["model"]
         logger.info(f"모델 로드: {model_c['model_id']}")
@@ -161,7 +171,8 @@ class Trainer:
         # ── 손실 함수 ──
         criterion = HairS2ILoss(
             phase=t.get("phase", 1),
-            lambda_bg=lw.get("bg", 3.0),
+            lambda_bg=lw.get("bg", 0.5),
+            lambda_color=lw.get("color", 1.5),
             lambda_lpips=lw.get("lpips", 0.1),
             lambda_edge=lw.get("edge", 0.05),
             lpips_warmup_ratio=t.get("lpips_warmup_ratio", 0.3),
@@ -235,7 +246,7 @@ class Trainer:
                 noise = torch.randn_like(z_target)
 
                 with torch.autocast(device_type="cuda", dtype=autocast_dtype):
-                    noise_pred, noise = model(
+                    noise_pred, noise, sketch_latent = model(
                         background=background,
                         sketch=sketch,
                         matte=matte,
@@ -274,6 +285,7 @@ class Trainer:
                         pred_latent=pred_z0,
                         z_bg=z_bg,
                         matte_latent=matte_latent,
+                        sketch_latent=sketch_latent,
                         pred_image=pred_image,
                         target_image=target_img,
                         sketch=sketch,

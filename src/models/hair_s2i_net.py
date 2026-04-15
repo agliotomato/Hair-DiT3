@@ -143,7 +143,7 @@ class HairS2INet(nn.Module):
         timestep:      torch.Tensor,
         target_latent: torch.Tensor,
         noise:         Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Args:
             background:    [B, 3, H, W]
@@ -152,6 +152,8 @@ class HairS2INet(nn.Module):
             timestep:      [B]
             target_latent: [B, 16, 64, 64]
             noise:         optional noise for z_noisy
+        Returns:
+            (noise_pred, noise, sketch_latent)
         """
         B = background.shape[0]
         # Learned null embeddings expanded to batch size
@@ -202,7 +204,7 @@ class HairS2INet(nn.Module):
             block_controlnet_hidden_states=blended,
         ).sample
 
-        return noise_pred, noise
+        return noise_pred, noise, sketch_latent
 
     # ------------------------------------------------------------------
     # Inference

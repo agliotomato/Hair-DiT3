@@ -10,6 +10,7 @@ data:
   image_size: 512
 
 training:
+  seed: 42
   batch_size: 8
   gradient_accumulation_steps: 1   # Effective batch = 8 (GH200 optimized)
   mixed_precision: bf16
@@ -23,7 +24,8 @@ training:
   use_wandb: true
   loss_weights:
     flow: 1.0
-    bg: 3.0
+    bg: 0.5
+    color: 1.5
     lpips: 0.1
     edge: 0.05
 
