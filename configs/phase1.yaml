@@ -6,7 +6,11 @@ base: configs/base.yaml
 training:
   phase: 1
   dropout: 0.1
-  resume_from: latest  # 자동으로 최신 체크포인트(checkpoint-XXXX)를 찾아 Resume
+  resume_from: null
+  use_wandb: true
+  wandb_project: "hair-dit3"
+  wandb_run_name: "phase1_color_loss_bg0.5_c1.5_seed42"
+  seed: 42
   dataset: unbraid_train
   epochs: 50
   learning_rate: 1.0e-4
@@ -15,4 +19,4 @@ training:
     edge: 0.0   # Phase 1에서는 엣지 손실 제외 (철학 반영)
 
 checkpointing:
-  output_dir: outputs/phase1
+  output_dir: outputs/phase1_color_loss

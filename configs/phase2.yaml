@@ -22,4 +22,4 @@ training:
     edge: 0.15
 
 checkpointing:
-  output_dir: outputs/phase2
+  output_dir: outputs/phase2_color_loss
