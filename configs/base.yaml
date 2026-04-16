@@ -25,7 +25,7 @@ training:
   loss_weights:
     flow: 1.0
     bg: 0.5
-    color: 1.5
+    stroke_color: 1.0
     lpips: 0.1
     edge: 0.05
 

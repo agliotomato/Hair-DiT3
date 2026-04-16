@@ -7,19 +7,19 @@ training:
   phase: 2
   seed: 42
   dataset: braid_train
-  resume_from: outputs/phase1_color_loss/final
+  resume_from: outputs/phase1_stroke_color/final
   epochs: 30
   learning_rate: 2.0e-5
   warmup_steps: 0
   use_wandb: true
   wandb_project: "hair-dit3"
-  wandb_run_name: "phase2_color_loss_bg0.5_c1.5_seed42"
+  wandb_run_name: "phase2_stroke_color_bg0.5_sc1.0_seed42"
   loss_weights:
     flow: 1.0
     bg: 0.5
-    color: 1.5
+    stroke_color: 1.0
     lpips: 0.2
     edge: 0.15
 
 checkpointing:
-  output_dir: outputs/phase2_color_loss
+  output_dir: outputs/phase2_stroke_color

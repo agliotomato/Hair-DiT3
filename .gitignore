@@ -7,8 +7,9 @@ results/debug_inpaint
 results/debug_matte_union/
 results/hypothesis3
 results/hypothesis4
-scripts/
 src/models/_pycache_
 src/utils/_pycache_
 results/04091
 back_2534/
+results/colorloss
+results/blend_test/

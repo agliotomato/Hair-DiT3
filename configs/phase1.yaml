@@ -9,14 +9,15 @@ training:
   resume_from: null
   use_wandb: true
   wandb_project: "hair-dit3"
-  wandb_run_name: "phase1_color_loss_bg0.5_c1.5_seed42"
+  wandb_run_name: "phase1_stroke_color_bg0.5_sc1.0_seed42"
   seed: 42
   dataset: unbraid_train
   epochs: 50
   learning_rate: 1.0e-4
   warmup_steps: 500
   loss_weights:
+    stroke_color: 1.0
     edge: 0.0   # Phase 1에서는 엣지 손실 제외 (철학 반영)
 
 checkpointing:
-  output_dir: outputs/phase1_color_loss
+  output_dir: outputs/phase1_stroke_color

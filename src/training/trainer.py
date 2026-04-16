@@ -176,7 +176,7 @@ class Trainer:
         criterion = HairS2ILoss(
             phase=t.get("phase", 1),
             lambda_bg=lw.get("bg", 0.5),
-            lambda_color=lw.get("color", 1.5),
+            lambda_stroke_color=lw.get("stroke_color", 1.0),
             lambda_lpips=lw.get("lpips", 0.1),
             lambda_edge=lw.get("edge", 0.05),
             lpips_warmup_ratio=t.get("lpips_warmup_ratio", 0.3),
@@ -275,7 +275,8 @@ class Trainer:
                         or (global_step / max(total_steps, 1)) >= criterion.lpips_warmup_ratio
                     )
                     need_grad_for_pred_image = (
-                        (lw.get("lpips", 0) > 0 and lpips_active) or 
+                        lw.get("stroke_color", 1.0) > 0 or
+                        (lw.get("lpips", 0) > 0 and lpips_active) or
                         (criterion.phase == 2 and lw.get("edge", 0) > 0)
                     )
                     need_nograd_for_pred_image = (global_step % (log_every * 10) == 0)
@@ -300,7 +301,6 @@ class Trainer:
                         pred_latent=pred_z0,
                         z_bg=z_bg,
                         matte_latent=matte_latent,
-                        sketch_latent=sketch_latent,
                         pred_image=pred_image,
                         target_image=target_img,
                         sketch=sketch,
