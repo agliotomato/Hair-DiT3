@@ -7,7 +7,7 @@ training:
   phase: 2
   seed: 42
   dataset: braid_train
-  resume_from: /home/agliotomato/diglab/Hair-DiT3/outputs/phase2/checkpoint-25000
+  resume_from: outputs/phase1_color_loss/final
   epochs: 30
   learning_rate: 2.0e-5
   warmup_steps: 0
