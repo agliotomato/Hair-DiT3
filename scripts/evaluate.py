@@ -110,28 +110,40 @@ def compute_psnr(pred: np.ndarray, gt: np.ndarray, mask: np.ndarray) -> float:
     return float(sk_psnr(g, p, data_range=255))
 
 
+def _mask_crop(img: np.ndarray, binary_mask: np.ndarray) -> Optional[np.ndarray]:
+    """binary_mask bounding box로 crop한 이미지 반환 (픽셀 수 < 49 이면 None)"""
+    ys, xs = np.where(binary_mask)
+    if len(ys) < 49:
+        return None
+    y1, y2 = ys.min(), ys.max() + 1
+    x1, x2 = xs.min(), xs.max() + 1
+    return img[y1:y2, x1:x2]
+
+
 def compute_ssim_bg(pred: np.ndarray, gt: np.ndarray, mask: np.ndarray) -> float:
-    """배경 영역(1-mask)에서 SSIM"""
+    """배경 영역(1-mask) bounding box crop에서 SSIM"""
     if not HAS_SKIMAGE:
         return float("nan")
-    bg = (1 - mask)[..., None]
-    p = (pred * bg).astype(np.float32)
-    g = (gt   * bg).astype(np.float32)
-    return float(sk_ssim(g, p, data_range=255, channel_axis=-1))
+    bg_mask = (mask < 0.1)
+    p_crop = _mask_crop(pred, bg_mask)
+    g_crop = _mask_crop(gt,   bg_mask)
+    if p_crop is None or g_crop is None:
+        return float("nan")
+    return float(sk_ssim(g_crop.astype(np.float32), p_crop.astype(np.float32),
+                         data_range=255, channel_axis=-1))
 
 
 def compute_ssim_hair(pred: np.ndarray, gt: np.ndarray, mask: np.ndarray) -> float:
-    """헤어 영역(mask)에서 SSIM — per-pixel map 평균"""
+    """헤어 영역(mask) bounding box crop에서 SSIM"""
     if not HAS_SKIMAGE:
         return float("nan")
-    p = (pred * mask[..., None]).astype(np.float32)
-    g = (gt   * mask[..., None]).astype(np.float32)
-    _, ssim_map = sk_ssim(g, p, data_range=255, channel_axis=-1, full=True)
-    # mask 영역에서만 평균
-    hair_pixels = mask > 0.1
-    if hair_pixels.sum() == 0:
+    hair_mask = (mask > 0.1)
+    p_crop = _mask_crop(pred, hair_mask)
+    g_crop = _mask_crop(gt,   hair_mask)
+    if p_crop is None or g_crop is None:
         return float("nan")
-    return float(ssim_map[hair_pixels].mean())
+    return float(sk_ssim(g_crop.astype(np.float32), p_crop.astype(np.float32),
+                         data_range=255, channel_axis=-1))
 
 
 def compute_lpips(pred: np.ndarray, gt: np.ndarray, mask: np.ndarray) -> float:
@@ -205,15 +217,17 @@ def _get_boundary_mask(matte_np: np.ndarray) -> np.ndarray:
 
 def compute_boundary_ssim(pred: np.ndarray, gt: np.ndarray,
                            matte_np: np.ndarray) -> float:
-    """경계면 영역 SSIM"""
+    """경계면 영역 bounding box crop에서 SSIM"""
     if not HAS_CV2 or not HAS_SKIMAGE:
         return float("nan")
     boundary = _get_boundary_mask(matte_np)
-    p = (pred * boundary[..., None]).astype(np.float32)
-    g = (gt   * boundary[..., None]).astype(np.float32)
-    if boundary.sum() < 10:
+    bin_mask = boundary > 0
+    p_crop = _mask_crop(pred, bin_mask)
+    g_crop = _mask_crop(gt,   bin_mask)
+    if p_crop is None or g_crop is None:
         return float("nan")
-    return float(sk_ssim(g, p, data_range=255, channel_axis=-1))
+    return float(sk_ssim(g_crop.astype(np.float32), p_crop.astype(np.float32),
+                         data_range=255, channel_axis=-1))
 
 
 def compute_boundary_lpips(pred: np.ndarray, gt: np.ndarray,
